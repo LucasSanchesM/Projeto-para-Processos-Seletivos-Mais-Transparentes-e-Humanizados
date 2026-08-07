@@ -1,3 +1,15 @@
 spring:
   application:
     name: processoseletivoapi
+  datasource:
+    url: jdbc:postgresql://localhost:5433/bancoDeDados
+    username: user
+    password: "1234"
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
