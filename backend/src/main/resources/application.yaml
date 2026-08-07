@@ -1,3 +1,9 @@
+jwt:
+  public:
+    key: "classpath:app.pub"
+  private:
+    key: "classpath:app.key"
+
 spring:
   application:
     name: processoseletivoapi
