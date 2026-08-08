@@ -25,7 +25,7 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-    
+
     @Value("${jwt.public.key}")
     private RSAPublicKey publicKey;
 
@@ -33,32 +33,34 @@ public class SecurityConfig {
     private RSAPrivateKey privateKey;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(authorize -> authorize
-            .anyRequest()
-            .authenticated())
-            .csrf(csrf -> csrf.disable())
-            .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-        //quando for dar deploy precisa tirar o csfr como disable
-        
+                .requestMatchers("/users", "/users/**").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                .anyRequest()
+                .authenticated())
+                .csrf(csrf -> csrf.disable())
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+        // quando for dar deploy precisa tirar o csfr como disable
+
         return http.build();
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(){
+    public JwtDecoder jwtDecoder() {
         return NimbusJwtDecoder.withPublicKey(publicKey).build();
     }
 
     @Bean
-    public JwtEncoder jwtEncoder(){
+    public JwtEncoder jwtEncoder() {
         JWK jwk = new RSAKey.Builder(this.publicKey).privateKey(this.privateKey).build();
         var jwks = new ImmutableJWKSet<>(new JWKSet(jwk));
         return new NimbusJwtEncoder(jwks);
     }
 
     @Bean
-    public BCryptPasswordEncoder passwordEncoder(){
+    public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 }
