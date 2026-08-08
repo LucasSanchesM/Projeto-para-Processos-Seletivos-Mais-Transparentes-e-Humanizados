@@ -1,6 +1,18 @@
 
-version: "3.8"
 services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672" #porta para UI de gerenciamento http
+    environment:
+        RABBITMQ_DEFAULT_USER: admin
+        RABBITMQ_DEFAULT_PASS: 1234
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
   postgres:
     image: postgres:16-alpine
     environment:
@@ -14,3 +26,4 @@ services:
 volumes:
   postgres_data:
     driver: local
+  rabbitmq_data:
