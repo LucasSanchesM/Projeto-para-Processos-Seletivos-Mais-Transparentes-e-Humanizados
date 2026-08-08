@@ -8,7 +8,8 @@ import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+
+import com.unisal.processoseletivoapi.exception.BusinessException;
 
 import com.unisal.processoseletivoapi.auth.dtos.LoginRequestDto;
 import com.unisal.processoseletivoapi.auth.dtos.LoginResponseDto;
@@ -26,11 +27,11 @@ public class AuthService {
         this.jwtEncoder = jwtEncoder;
     }
 
-    public LoginResponseDto loginUser(LoginRequestDto dto){
+    public LoginResponseDto loginUser(LoginRequestDto dto) {
         var user = userRepository.findByEmail(dto.email());
 
-        if(user.isEmpty() || !passwordEncoder.matches(dto.password(), user.get().getPasswordHash())){
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email ou senha inválidos");
+        if (user.isEmpty() || !passwordEncoder.matches(dto.password(), user.get().getPasswordHash())) {
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "Email ou senha inválidos");
         }
 
         var now = Instant.now();
@@ -38,12 +39,12 @@ public class AuthService {
         var scope = user.get().getRole();
 
         var claims = JwtClaimsSet.builder()
-                                .issuer("backend_processoseletivo")
-                                .subject(user.get().getId().toString())
-                                .issuedAt(now)
-                                .claim("scope", scope)
-                                .expiresAt(now.plusSeconds(expiresIn))
-                                .build();
+                .issuer("backend_processoseletivo")
+                .subject(user.get().getId().toString())
+                .issuedAt(now)
+                .claim("scope", scope)
+                .expiresAt(now.plusSeconds(expiresIn))
+                .build();
 
         var jwtValue = jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
 

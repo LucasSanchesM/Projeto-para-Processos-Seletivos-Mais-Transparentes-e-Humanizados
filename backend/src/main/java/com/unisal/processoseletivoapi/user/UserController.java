@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 import com.unisal.processoseletivoapi.user.dto.CreateUserDto;
 import com.unisal.processoseletivoapi.user.dto.UpdateUserDto;
 import com.unisal.processoseletivoapi.user.dto.UserResponseDto;
@@ -29,7 +31,7 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<UserResponseDto> createUser(@RequestBody CreateUserDto dto) {
+    public ResponseEntity<UserResponseDto> createUser(@Valid @RequestBody CreateUserDto dto) {
         var response = userService.createUser(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -47,7 +49,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponseDto> updateUser(@PathVariable("id") UUID id, @RequestBody UpdateUserDto dto) {
+    public ResponseEntity<UserResponseDto> updateUser(@PathVariable("id") UUID id, @Valid @RequestBody UpdateUserDto dto) {
         var response = userService.updateUser(id, dto);
         return ResponseEntity.ok(response);
     }
