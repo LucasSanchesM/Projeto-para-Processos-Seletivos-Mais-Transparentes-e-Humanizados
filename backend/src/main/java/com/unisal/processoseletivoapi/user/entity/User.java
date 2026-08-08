@@ -49,7 +49,7 @@ public class User {
         this.name = name;
         this.email = email;
         this.passwordHash = passwordHash;
-        this.role = role != null ? role : "USER";
+        this.role = role != null ? role : "CANDIDATE";
         this.active = active != null ? active : true;
     }
 
@@ -61,7 +61,7 @@ public class User {
             this.active = true;
         }
         if (this.role == null) {
-            this.role = "USER";
+            this.role = "CANDIDATE";
         }
     }
 

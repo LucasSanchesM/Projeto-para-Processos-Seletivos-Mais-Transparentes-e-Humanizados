@@ -25,18 +25,23 @@ public class UserService {
     }
 
     public UserResponseDto createUser(CreateUserDto dto) {
-
         var existingUser = userRepository.findByEmail(dto.email());
 
         if (existingUser.isPresent()) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "E-mail já está em uso");
         }
 
+        UserRole role = dto.role() != null ? dto.role() : UserRole.CANDIDATE;
+
+        if (role == UserRole.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Não é permitido se cadastrar como ADMIN diretamente");
+        }
+
         var user = new User();
         user.setName(dto.name());
         user.setEmail(dto.email());
         user.setPasswordHash(passwordEncoder.encode(dto.password()));
-        user.setRole(dto.role() != null && !dto.role().isBlank() ? dto.role() : "USER");
+        user.setRole(role.name());
         user.setActive(true);
 
         var savedUser = userRepository.save(user);
@@ -46,21 +51,21 @@ public class UserService {
 
     public List<UserResponseDto> findAllUsers() {
         return userRepository.findAll()
-                .stream()
-                .map(this::mapToResponse)
-                .toList();
+            .stream()
+            .map(this::mapToResponse)
+            .toList();
     }
 
     public UserResponseDto findUserById(UUID id) {
         var user = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         return mapToResponse(user);
     }
 
     public UserResponseDto updateUser(UUID id, UpdateUserDto dto) {
         var user = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         if (dto.name() != null && !dto.name().isBlank()) {
             user.setName(dto.name());
@@ -77,8 +82,8 @@ public class UserService {
             user.setPasswordHash(passwordEncoder.encode(dto.password()));
         }
 
-        if (dto.role() != null && !dto.role().isBlank()) {
-            user.setRole(dto.role());
+        if (dto.role() != null) {
+            user.setRole(dto.role().name());
         }
 
         if (dto.active() != null) {
@@ -92,19 +97,20 @@ public class UserService {
 
     public void deleteUser(UUID id) {
         var user = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         userRepository.delete(user);
     }
 
     private UserResponseDto mapToResponse(User user) {
         return new UserResponseDto(
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                user.getRole(),
-                user.getActive(),
-                user.getCreatedAt(),
-                user.getUpdatedAt());
+            user.getId(),
+            user.getName(),
+            user.getEmail(),
+            user.getRole(),
+            user.getActive(),
+            user.getCreatedAt(),
+            user.getUpdatedAt()
+        );
     }
 }
