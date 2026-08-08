@@ -24,3 +24,14 @@ spring:
     port: 5672
     username: admin
     password: "1234"
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-retries: 3
+          multiplier: 10
+          max-interval: 10000ms
+resend:
+  api:
+    key: "re_6kix7ry9_CXVSdegCpR46YMiycAmqy9TX" #NAO ESQUECER DE DEIXAR COMO VARIAVEL DE AMBIENTE
