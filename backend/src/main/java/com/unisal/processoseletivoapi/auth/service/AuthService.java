@@ -1,4 +1,4 @@
-package com.unisal.processoseletivoapi.token.service;
+package com.unisal.processoseletivoapi.auth.service;
 
 import java.time.Instant;
 
@@ -10,17 +10,17 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.unisal.processoseletivoapi.token.dtos.LoginRequestDto;
-import com.unisal.processoseletivoapi.token.dtos.LoginResponseDto;
+import com.unisal.processoseletivoapi.auth.dtos.LoginRequestDto;
+import com.unisal.processoseletivoapi.auth.dtos.LoginResponseDto;
 import com.unisal.processoseletivoapi.user.UserRepository;
 
 @Service
-public class TokenService {
+public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtEncoder jwtEncoder;
 
-    public TokenService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtEncoder jwtEncoder) {
+    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtEncoder jwtEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;

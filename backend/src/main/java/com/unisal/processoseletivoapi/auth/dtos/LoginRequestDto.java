@@ -1,4 +1,4 @@
-package com.unisal.processoseletivoapi.token.dtos;
+package com.unisal.processoseletivoapi.auth.dtos;
 
 public record LoginRequestDto(String email, String password) {
 }
