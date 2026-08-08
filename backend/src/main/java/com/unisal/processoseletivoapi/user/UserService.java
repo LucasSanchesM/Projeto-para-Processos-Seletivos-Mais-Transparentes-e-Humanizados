@@ -6,8 +6,8 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
+import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.user.dto.CreateUserDto;
 import com.unisal.processoseletivoapi.user.dto.UpdateUserDto;
 import com.unisal.processoseletivoapi.user.dto.UserResponseDto;
@@ -28,13 +28,13 @@ public class UserService {
         var existingUser = userRepository.findByEmail(dto.email());
 
         if (existingUser.isPresent()) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "E-mail já está em uso");
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "E-mail já está em uso");
         }
 
         UserRole role = dto.role() != null ? dto.role() : UserRole.CANDIDATE;
 
         if (role == UserRole.ADMIN) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Não é permitido se cadastrar como ADMIN diretamente");
+            throw new BusinessException(HttpStatus.FORBIDDEN, "Não é permitido se cadastrar como ADMIN diretamente");
         }
 
         var user = new User();
@@ -58,14 +58,14 @@ public class UserService {
 
     public UserResponseDto findUserById(UUID id) {
         var user = userRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+            .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         return mapToResponse(user);
     }
 
     public UserResponseDto updateUser(UUID id, UpdateUserDto dto) {
         var user = userRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+            .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         if (dto.name() != null && !dto.name().isBlank()) {
             user.setName(dto.name());
@@ -73,7 +73,7 @@ public class UserService {
 
         if (dto.email() != null && !dto.email().isBlank()) {
             if (!user.getEmail().equals(dto.email()) && userRepository.existsByEmail(dto.email())) {
-                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "E-mail já está em uso");
+                throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "E-mail já está em uso");
             }
             user.setEmail(dto.email());
         }
@@ -97,7 +97,7 @@ public class UserService {
 
     public void deleteUser(UUID id) {
         var user = userRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+            .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         userRepository.delete(user);
     }
