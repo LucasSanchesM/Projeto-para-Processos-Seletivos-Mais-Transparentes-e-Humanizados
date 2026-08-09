@@ -1,13 +1,17 @@
 package com.unisal.processoseletivoapi.user;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.unisal.processoseletivoapi.exception.BusinessException;
+import com.unisal.processoseletivoapi.mensageria.dto.EmailSendRequest;
 import com.unisal.processoseletivoapi.user.dto.CreateUserDto;
 import com.unisal.processoseletivoapi.user.dto.UpdateUserDto;
 import com.unisal.processoseletivoapi.user.dto.UserResponseDto;
@@ -18,10 +22,15 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final RabbitTemplate rabbitTemplate;
 
-    public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder) {
+    private static final int CODE_EXPIRATION_MINUTES = 10;
+
+    public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder,
+            RabbitTemplate rabbitTemplate) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     public UserResponseDto createUser(CreateUserDto dto) {
@@ -37,35 +46,94 @@ public class UserService {
             throw new BusinessException(HttpStatus.FORBIDDEN, "Não é permitido se cadastrar como ADMIN diretamente");
         }
 
+        String verificationCode = generateVerificationCode();
+
         var user = new User();
         user.setName(dto.name());
         user.setEmail(dto.email());
         user.setPasswordHash(passwordEncoder.encode(dto.password()));
         user.setRole(role.name());
-        user.setActive(true);
+        user.setActive(false);
+        user.setVerificationCode(verificationCode);
+        user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(CODE_EXPIRATION_MINUTES));
 
         var savedUser = userRepository.save(user);
+
+        // Publica mensagem no RabbitMQ para enviar o email com o código
+        var emailRequest = new EmailSendRequest(verificationCode, dto.email());
+        rabbitTemplate.convertAndSend("email.exchange", "email.confirmacao.key", emailRequest);
 
         return mapToResponse(savedUser);
     }
 
+    public void verifyEmail(String email, String code) {
+        var user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+
+        if (user.getActive()) {
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Conta já está ativa");
+        }
+
+        if (user.getVerificationCode() == null) {
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Nenhum código de verificação pendente");
+        }
+
+        if (user.getVerificationCodeExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Código de verificação expirado. Solicite um novo código.");
+        }
+
+        if (!user.getVerificationCode().equals(code)) {
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Código de verificação inválido");
+        }
+
+        user.setActive(true);
+        user.setVerificationCode(null);
+        user.setVerificationCodeExpiresAt(null);
+        userRepository.save(user);
+    }
+
+    public void resendVerificationCode(String email) {
+        var user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+
+        if (user.getActive()) {
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Conta já está ativa");
+        }
+        // veriricar se já não foi enviado um codigo nas ultimos 1 minuto
+
+        if (user.getVerificationCode() != null
+                && user.getVerificationCodeExpiresAt().isAfter(LocalDateTime.now().minusMinutes(1))) {
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Código de verificação já enviado nas últimas 24h");
+        }
+
+        String newCode = generateVerificationCode();
+        user.setVerificationCode(newCode);
+        user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(CODE_EXPIRATION_MINUTES));
+        userRepository.save(user);
+
+        var emailRequest = new EmailSendRequest(newCode, email);
+        rabbitTemplate.convertAndSend("email.exchange", "email.confirmacao.key", emailRequest);
+    }
+
     public List<UserResponseDto> findAllUsers() {
         return userRepository.findAll()
-            .stream()
-            .map(this::mapToResponse)
-            .toList();
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     public UserResponseDto findUserById(UUID id) {
         var user = userRepository.findById(id)
-            .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         return mapToResponse(user);
     }
 
     public UserResponseDto updateUser(UUID id, UpdateUserDto dto) {
         var user = userRepository.findById(id)
-            .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         if (dto.name() != null && !dto.name().isBlank()) {
             user.setName(dto.name());
@@ -97,20 +165,25 @@ public class UserService {
 
     public void deleteUser(UUID id) {
         var user = userRepository.findById(id)
-            .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         userRepository.delete(user);
     }
 
+    private String generateVerificationCode() {
+        SecureRandom random = new SecureRandom();
+        int code = 10000 + random.nextInt(90000); // Gera número entre 10000 e 99999
+        return String.valueOf(code);
+    }
+
     private UserResponseDto mapToResponse(User user) {
         return new UserResponseDto(
-            user.getId(),
-            user.getName(),
-            user.getEmail(),
-            user.getRole(),
-            user.getActive(),
-            user.getCreatedAt(),
-            user.getUpdatedAt()
-        );
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getRole(),
+                user.getActive(),
+                user.getCreatedAt(),
+                user.getUpdatedAt());
     }
 }
