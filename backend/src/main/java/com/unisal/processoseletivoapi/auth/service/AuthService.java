@@ -34,6 +34,10 @@ public class AuthService {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "Email ou senha inválidos");
         }
 
+        if (!user.get().getActive()) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "Conta não verificada. Verifique seu email para ativar sua conta.");
+        }
+
         var now = Instant.now();
         var expiresIn = 900L;
         var scope = user.get().getRole();
