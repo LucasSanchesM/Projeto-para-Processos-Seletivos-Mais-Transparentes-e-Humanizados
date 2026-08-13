@@ -1,32 +1,37 @@
 package com.unisal.processoseletivoapi.services;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-
-import java.time.LocalDateTime;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.mensageria.dto.EmailSendRequest;
 import com.unisal.processoseletivoapi.user.UserRepository;
 import com.unisal.processoseletivoapi.user.UserRole;
-import com.unisal.processoseletivoapi.user.entity.User;
 import com.unisal.processoseletivoapi.user.UserService;
 import com.unisal.processoseletivoapi.user.dto.CreateUserDto;
+import com.unisal.processoseletivoapi.user.entity.User;
 
 @ExtendWith(MockitoExtension.class)
 public class UserServiceTest {
@@ -47,6 +52,9 @@ public class UserServiceTest {
 
     @Captor
     private ArgumentCaptor<User> userArgumentCaptor;
+
+    @Captor
+    private ArgumentCaptor<String> emailArgumentCaptor;
 
     @Nested
     class createUser{
@@ -100,6 +108,36 @@ public class UserServiceTest {
             assertEquals(userSaved.getActive(), output.active());
             assertEquals(userSaved.getCreatedAt(), output.createdAt());
             assertEquals(userSaved.getUpdatedAt(), output.updatedAt());
+        }
+
+        @Test
+        @DisplayName("Should dont create user when email already exist")
+        void shouldDontCreateWhenEmailAlreadyExist(){
+            //===== ARRANGE =======
+            var userExistence = new User();
+            userExistence.setName("Joao");
+            userExistence.setEmail("joao@email.com");
+            userExistence.setPasswordHash("criptografado");
+            CreateUserDto inputDto = new CreateUserDto("Joao", "joao@email.com", "1234", UserRole.CANDIDATE);
+            doReturn(Optional.of(userExistence)).when(userRepository).findByEmail(inputDto.email());
+
+            //===== ACT =======
+            var exception = assertThrows(BusinessException.class, () -> userService.createUser(inputDto));
+
+            //===== ASSERT =======
+            //verifica se a mensagem de excessao enviada foi a correta
+            assertEquals("E-mail já está em uso", exception.getMessage());
+
+            //verifica se o email capturado no find foi o mesmo do input
+            verify(userRepository).findByEmail(emailArgumentCaptor.capture());
+            var emailReturned = emailArgumentCaptor.getValue();
+            assertEquals(inputDto.email(), emailReturned);
+
+            //verifica se nenhum registro seria feito no banco
+            verify(userRepository, never()).save(any(User.class));
+            
+            //verifica se nao haveria email sendo registrados no rabbitMQ
+            verifyNoInteractions(rabbitTemplate);
         }
     }
 
