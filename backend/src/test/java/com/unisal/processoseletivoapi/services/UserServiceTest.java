@@ -1,11 +1,14 @@
 package com.unisal.processoseletivoapi.services;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import com.unisal.processoseletivoapi.auth.dtos.VerifyEmailDto;
 import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.mensageria.dto.EmailSendRequest;
 import com.unisal.processoseletivoapi.user.UserRepository;
@@ -111,7 +115,7 @@ public class UserServiceTest {
         }
 
         @Test
-        @DisplayName("Should dont create user when email already exist")
+        @DisplayName("Should not create user when email already exist")
         void shouldDontCreateWhenEmailAlreadyExist(){
             //===== ARRANGE =======
             var userExistence = new User();
@@ -141,4 +145,161 @@ public class UserServiceTest {
         }
     }
 
+    @Nested
+    class verifyEmail{
+        @Test
+        @DisplayName("Should verify user successfully")
+        void shouldVerifyUserSuccessfully(){
+            //===== ARRANGE =======
+            VerifyEmailDto dto = new VerifyEmailDto("pessoa@email.com", "12345");
+            User user = new User();
+            user.setName("pessoa");
+            user.setEmail("pessoa@email.com");
+            user.setPasswordHash("criptografado");
+            user.setActive(false);
+            user.setVerificationCode("12345");
+            user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(10));
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(dto.email());
+            when(userRepository.save(any(User.class))).thenAnswer(chamado -> {
+                User userInseridoComoArgumento = chamado.getArgument(0);
+                return userInseridoComoArgumento;
+            });
+            //===== ACT =======
+            userService.verifyEmail(dto.email(), dto.code());
+
+            //===== ASSERT =======
+            
+            //verifica o que foi capturado nos metodos findbyEmail e save (o que foi passado no parametro)
+            verify(userRepository).findByEmail(emailArgumentCaptor.capture());
+            verify(userRepository).save(userArgumentCaptor.capture());
+
+            //verifica se o email usado na pesquisa por usuario bate com o passado no dto
+            var emailCaptured = emailArgumentCaptor.getValue();
+            assertEquals(dto.email(), emailCaptured);
+            
+            //verifica se a conta do usuario seria corretamente ativada
+            var userCaptured = userArgumentCaptor.getValue();
+            assertTrue(userCaptured.getActive());
+
+            //Verifica se as variaveis relacionadas ao codigo de verificação seriam corretamente designadas como nulas
+            assertNull(userCaptured.getVerificationCode());
+            assertNull(userCaptured.getVerificationCodeExpiresAt());
+        }
+
+        @Test
+        @DisplayName("Should not verify user when user email dont searched")
+        void shouldNotVerifyUserWhenUserEmailDontSearched(){
+            //===== ARRANGE =======
+            VerifyEmailDto dto = new VerifyEmailDto("pessoa@email.com", "12345");
+            doReturn(Optional.empty()).when(userRepository).findByEmail(dto.email());
+
+            //===== ACT =======
+            var exception = assertThrows(BusinessException.class, () -> userService.verifyEmail(dto.email(), dto.code()));
+
+            //===== ASSERT =======
+
+            //verifica se a mensagem de excessão foi lançada e se é a correta
+            assertEquals("Usuário não encontrado", exception.getMessage());
+            
+            //verifica se nenhuma informação seria salva no banco
+            verify(userRepository, never()).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("Should not verify user when it's activated")
+        void shouldNotVerifyUserWhenItsActivated(){
+            //===== ARRANGE =======
+            VerifyEmailDto dto = new VerifyEmailDto("pessoa@email.com", "12345");
+            User user = new User();
+            user.setName("pessoa");
+            user.setEmail("pessoa@email.com");
+            user.setPasswordHash("criptografado");
+            user.setActive(true);
+            user.setVerificationCode("12345");
+            user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(10));
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(dto.email());
+
+            //===== ACT =======
+            var exception = assertThrows(BusinessException.class, () -> userService.verifyEmail(dto.email(), dto.code()));
+
+            //===== ASSERT =======
+
+            //verifica se a mensagem de excessão foi lançada e se é a correta
+            assertEquals("Conta já está ativa", exception.getMessage());
+            
+            //verifica se nenhuma informação seria salva no banco
+            verify(userRepository, never()).save(any(User.class));
+
+        }
+
+        @Test
+        @DisplayName("should not verify user when verification code is null")
+        void shouldNotVerifyUserWhenVerificationCodeIsNull(){
+            //===== ARRANGE =======
+            VerifyEmailDto dto = new VerifyEmailDto("pessoa@email.com", "12345");
+            User user = new User();
+            user.setName("pessoa");
+            user.setEmail("pessoa@email.com");
+            user.setPasswordHash("criptografado");
+            user.setActive(false);
+            user.setVerificationCode(null);
+            user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(10));
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(dto.email());
+
+            //===== ACT =======
+            var exception = assertThrows(BusinessException.class, () -> userService.verifyEmail(dto.email(), dto.code()));
+
+            //===== ASSERT =======
+            assertEquals("Nenhum código de verificação pendente", exception.getMessage());
+            
+            verify(userRepository, never()).save(any(User.class));
+
+        }
+
+        @Test
+        @DisplayName("Should not verify user when verification code is expired")
+        void shouldNotVerifyUserWhenVerificationCodeIsExpired(){
+            //===== ARRANGE =======
+            VerifyEmailDto dto = new VerifyEmailDto("pessoa@email.com", "12345");
+            User user = new User();
+            user.setName("pessoa");
+            user.setEmail("pessoa@email.com");
+            user.setPasswordHash("criptografado");
+            user.setActive(false);
+            user.setVerificationCode("12345");
+            user.setVerificationCodeExpiresAt(LocalDateTime.now().minusMinutes(10));
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(dto.email());
+
+            //===== ACT =======
+            var exception = assertThrows(BusinessException.class, () -> userService.verifyEmail(dto.email(), dto.code()));
+
+            //===== ASSERT =======
+            assertEquals("Código de verificação expirado. Solicite um novo código.", exception.getMessage());
+            
+            verify(userRepository, never()).save(any(User.class));
+
+        }
+        @Test
+        @DisplayName("Should not verify user when verification code is invalid")
+        void shouldNotVerifyUserWhenVerificationCodeIsInvalid(){
+            //===== ARRANGE =======
+            VerifyEmailDto dto = new VerifyEmailDto("pessoa@email.com", "12345");
+            User user = new User();
+            user.setName("pessoa");
+            user.setEmail("pessoa@email.com");
+            user.setPasswordHash("criptografado");
+            user.setActive(false);
+            user.setVerificationCode("54321");
+            user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(10));
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(dto.email());
+
+            //===== ACT =======
+            var exception = assertThrows(BusinessException.class, () -> userService.verifyEmail(dto.email(), dto.code()));
+
+            //===== ASSERT =======
+            assertEquals("Código de verificação inválido", exception.getMessage());
+            
+            verify(userRepository, never()).save(any(User.class));
+        }
+    }
 }
