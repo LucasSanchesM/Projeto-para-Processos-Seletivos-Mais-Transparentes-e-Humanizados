@@ -9,7 +9,9 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.unisal.processoseletivoapi.auth.service.VerificationCodeService;
 import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.mensageria.dto.EmailSendRequest;
 import com.unisal.processoseletivoapi.user.dto.CreateUserDto;
@@ -23,16 +25,17 @@ public class UserService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final RabbitTemplate rabbitTemplate;
-
-    private static final int CODE_EXPIRATION_MINUTES = 10;
+    private final VerificationCodeService verificationCodeService;
 
     public UserService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder,
-            RabbitTemplate rabbitTemplate) {
+            RabbitTemplate rabbitTemplate, VerificationCodeService verificationCodeService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.rabbitTemplate = rabbitTemplate;
+        this.verificationCodeService = verificationCodeService;
     }
 
+    @Transactional
     public UserResponseDto createUser(CreateUserDto dto) {
         var existingUser = userRepository.findByEmail(dto.email());
 
@@ -54,10 +57,9 @@ public class UserService {
         user.setPasswordHash(passwordEncoder.encode(dto.password()));
         user.setRole(role.name());
         user.setActive(false);
-        user.setVerificationCode(verificationCode);
-        user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(CODE_EXPIRATION_MINUTES));
 
         var savedUser = userRepository.save(user);
+        verificationCodeService.saveCode(savedUser, verificationCode);
 
         // Publica mensagem no RabbitMQ para enviar o email com o código
         var emailRequest = new EmailSendRequest(verificationCode, dto.email());
@@ -66,6 +68,7 @@ public class UserService {
         return mapToResponse(savedUser);
     }
 
+    @Transactional
     public void verifyEmail(String email, String code) {
         var user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
@@ -74,25 +77,25 @@ public class UserService {
             throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Conta já está ativa");
         }
 
-        if (user.getVerificationCode() == null) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Nenhum código de verificação pendente");
-        }
+        var verificationCode = verificationCodeService.getCode(user)
+                .orElseThrow(() -> new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
+                        "Nenhum código de verificação pendente"));
 
-        if (user.getVerificationCodeExpiresAt().isBefore(LocalDateTime.now())) {
+        if (verificationCode.getExpiresAt().isBefore(LocalDateTime.now())) {
             throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "Código de verificação expirado. Solicite um novo código.");
         }
 
-        if (!user.getVerificationCode().equals(code)) {
+        if (!verificationCode.getCode().equals(code)) {
             throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Código de verificação inválido");
         }
 
         user.setActive(true);
-        user.setVerificationCode(null);
-        user.setVerificationCodeExpiresAt(null);
         userRepository.save(user);
+        verificationCodeService.removeCode(user);
     }
 
+    @Transactional
     public void resendVerificationCode(String email) {
         var user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
@@ -100,18 +103,13 @@ public class UserService {
         if (user.getActive()) {
             throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Conta já está ativa");
         }
-        // veriricar se já não foi enviado um codigo nas ultimos 1 minuto
-
-        if (user.getVerificationCode() != null
-                && user.getVerificationCodeExpiresAt().isAfter(LocalDateTime.now().minusMinutes(1))) {
+        if (verificationCodeService.isRateLimited(user)) {
             throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
-                    "Código de verificação já enviado nas últimas 24h");
+                    "Código de verificação já enviado no último minuto");
         }
 
         String newCode = generateVerificationCode();
-        user.setVerificationCode(newCode);
-        user.setVerificationCodeExpiresAt(LocalDateTime.now().plusMinutes(CODE_EXPIRATION_MINUTES));
-        userRepository.save(user);
+        verificationCodeService.saveCode(user, newCode);
 
         var emailRequest = new EmailSendRequest(newCode, email);
         rabbitTemplate.convertAndSend("email.exchange", "email.confirmacao.key", emailRequest);
@@ -163,10 +161,12 @@ public class UserService {
         return mapToResponse(updatedUser);
     }
 
+    @Transactional
     public void deleteUser(UUID id) {
         var user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
+        verificationCodeService.removeCode(user);
         userRepository.delete(user);
     }
 

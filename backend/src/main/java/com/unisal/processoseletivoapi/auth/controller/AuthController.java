@@ -2,6 +2,8 @@ package com.unisal.processoseletivoapi.auth.controller;
 
 import java.util.Map;
 
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,7 +35,16 @@ public class AuthController {
     public ResponseEntity<LoginResponseDto> logarUser(@Valid @RequestBody LoginRequestDto dto) {
         var token = authService.loginUser(dto);
 
-        return ResponseEntity.ok(token);
+        ResponseCookie cookie = ResponseCookie.from("token", token.token())
+                .httpOnly(false)
+                .path("/")
+                .maxAge(token.expiresIn() != null ? token.expiresIn() : 86400)
+                .sameSite("Lax")
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(token);
     }
 
     @PostMapping("/verify-email")
