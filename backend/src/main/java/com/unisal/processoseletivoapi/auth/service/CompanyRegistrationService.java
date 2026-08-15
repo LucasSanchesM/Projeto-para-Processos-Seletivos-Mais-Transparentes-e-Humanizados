@@ -91,4 +91,5 @@ public class CompanyRegistrationService {
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
+    
 }

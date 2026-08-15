@@ -3,6 +3,7 @@ package com.unisal.processoseletivoapi.candidate;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -13,7 +14,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.unisal.processoseletivoapi.candidate.dto.CandidateProfileDto;
 import com.unisal.processoseletivoapi.candidate.dto.CreateExperienceDto;
@@ -46,6 +49,14 @@ public class CandidateProfileController {
         UUID userId = UUID.fromString(jwt.getSubject());
         var response = candidateProfileService.updateProfile(userId, dto);
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CandidateProfileDto> uploadMyAvatar(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestPart("file") MultipartFile file) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(candidateProfileService.uploadAvatar(userId, file));
     }
 
     @PostMapping("/me/experiences")

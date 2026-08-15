@@ -44,6 +44,12 @@ public class CandidateProfile {
     private String city;
     private String state;
 
+    @Column(name = "profile_image_url", length = 2048)
+    private String profileImageUrl;
+
+    @Column(name = "profile_image_key", length = 512)
+    private String profileImageKey;
+
     private String institution;
     private String course;
     private Integer currentSemester;
@@ -142,6 +148,22 @@ public class CandidateProfile {
 
     public void setState(String state) {
         this.state = state;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public void setProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    public String getProfileImageKey() {
+        return profileImageKey;
+    }
+
+    public void setProfileImageKey(String profileImageKey) {
+        this.profileImageKey = profileImageKey;
     }
 
     public String getInstitution() {

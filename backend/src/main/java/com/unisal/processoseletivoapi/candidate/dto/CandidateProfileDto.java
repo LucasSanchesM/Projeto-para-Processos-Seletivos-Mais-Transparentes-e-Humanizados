@@ -9,6 +9,7 @@ public record CandidateProfileDto(
     UUID userId,
     String userName,
     String userEmail,
+    String profileImageUrl,
     String headline,
     String summary,
     String phone,
