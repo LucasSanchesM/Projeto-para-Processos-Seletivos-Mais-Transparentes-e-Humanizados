@@ -14,7 +14,6 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMqConfig {
 
-
     @Bean
     public DirectExchange exchange(){
         return new DirectExchange("email.exchange");
