@@ -32,6 +32,7 @@ public class CompanyProfile {
     @Column(nullable = false)
     private String companyName;
 
+    @Column(unique = true)
     private String cnpj;
 
     @Column(columnDefinition = "TEXT")

@@ -3,6 +3,7 @@ package com.unisal.processoseletivoapi.auth.controller;
 import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,11 +13,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 
+import com.unisal.processoseletivoapi.auth.dtos.CompanyRegistrationDto;
 import com.unisal.processoseletivoapi.auth.dtos.LoginRequestDto;
 import com.unisal.processoseletivoapi.auth.dtos.LoginResponseDto;
 import com.unisal.processoseletivoapi.auth.dtos.ResendCodeDto;
 import com.unisal.processoseletivoapi.auth.dtos.VerifyEmailDto;
 import com.unisal.processoseletivoapi.auth.service.AuthService;
+import com.unisal.processoseletivoapi.auth.service.CompanyRegistrationService;
+import com.unisal.processoseletivoapi.user.dto.UserResponseDto;
 import com.unisal.processoseletivoapi.user.UserService;
 
 @RestController
@@ -25,10 +29,18 @@ public class AuthController {
 
     private final AuthService authService;
     private final UserService userService;
+    private final CompanyRegistrationService companyRegistrationService;
 
-    public AuthController(AuthService authService, UserService userService) {
+    public AuthController(AuthService authService, UserService userService,
+            CompanyRegistrationService companyRegistrationService) {
         this.authService = authService;
         this.userService = userService;
+        this.companyRegistrationService = companyRegistrationService;
+    }
+
+    @PostMapping("/register-company")
+    public ResponseEntity<UserResponseDto> registerCompany(@Valid @RequestBody CompanyRegistrationDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(companyRegistrationService.register(dto));
     }
 
     @PostMapping()

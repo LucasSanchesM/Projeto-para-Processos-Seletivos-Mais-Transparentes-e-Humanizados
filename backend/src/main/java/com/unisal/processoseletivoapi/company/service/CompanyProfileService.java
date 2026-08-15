@@ -33,18 +33,28 @@ public class CompanyProfileService {
 
     @Transactional
     public CompanyProfileDto updateProfile(UUID userId, UpdateCompanyProfileDto dto) {
+
         CompanyProfile profile = findOrCreateProfile(userId);
 
         if (dto.companyName() != null && !dto.companyName().isBlank()) {
             profile.setCompanyName(dto.companyName());
         }
-        if (dto.cnpj() != null) profile.setCnpj(dto.cnpj());
-        if (dto.description() != null) profile.setDescription(dto.description());
-        if (dto.industry() != null) profile.setIndustry(dto.industry());
-        if (dto.website() != null) profile.setWebsite(dto.website());
-        if (dto.city() != null) profile.setCity(dto.city());
-        if (dto.state() != null) profile.setState(dto.state());
-        if (dto.logoUrl() != null) profile.setLogoUrl(dto.logoUrl());
+
+        if (dto.cnpj() != null)
+            profile.setCnpj(dto.cnpj());
+
+        if (dto.description() != null)
+            profile.setDescription(dto.description());
+        if (dto.industry() != null)
+            profile.setIndustry(dto.industry());
+        if (dto.website() != null)
+            profile.setWebsite(dto.website());
+        if (dto.city() != null)
+            profile.setCity(dto.city());
+        if (dto.state() != null)
+            profile.setState(dto.state());
+        if (dto.logoUrl() != null)
+            profile.setLogoUrl(dto.logoUrl());
 
         CompanyProfile saved = companyProfileRepository.save(profile);
         return toDto(saved);
@@ -55,6 +65,10 @@ public class CompanyProfileService {
                 .orElseGet(() -> {
                     User user = userRepository.findById(userId)
                             .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+                    if (!"COMPANY".equals(user.getRole())) {
+                        throw new BusinessException(HttpStatus.FORBIDDEN,
+                                "Apenas empresas podem acessar o perfil empresarial");
+                    }
                     CompanyProfile newProfile = new CompanyProfile(user, user.getName());
                     return companyProfileRepository.save(newProfile);
                 });
@@ -73,7 +87,6 @@ public class CompanyProfileService {
                 profile.getState(),
                 profile.getLogoUrl(),
                 profile.getCreatedAt(),
-                profile.getUpdatedAt()
-        );
+                profile.getUpdatedAt());
     }
 }

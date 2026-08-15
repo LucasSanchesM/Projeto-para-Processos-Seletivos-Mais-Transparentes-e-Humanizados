@@ -7,6 +7,8 @@ jwt:
 spring:
   application:
     name: processoseletivoapi
+  config:
+    import: "optional:file:./.env[.properties]"
   datasource:
     url: jdbc:postgresql://localhost:5433/bancoDeDados
     username: user
@@ -32,6 +34,27 @@ spring:
           max-retries: 3
           multiplier: 10
           max-interval: 10000ms
+  security:
+    oauth2:
+      client:
+        registration:
+          linkedin:
+            client-id: ${LINKEDIN_CLIENT_ID:linkedin-client-id-not-configured}
+            client-secret: ${LINKEDIN_CLIENT_SECRET:linkedin-client-secret-not-configured}
+            client-name: LinkedIn
+            provider: linkedin
+            authorization-grant-type: authorization_code
+            client-authentication-method: client_secret_post
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - openid
+              - profile
+              - email
+        provider:
+          linkedin:
+            issuer-uri: https://www.linkedin.com/oauth
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
 resend:
   api:
     key: "re_6kix7ry9_CXVSdegCpR46YMiycAmqy9TX" #NAO ESQUECER DE DEIXAR COMO VARIAVEL DE AMBIENTE

@@ -48,6 +48,10 @@ public class UserService {
         if (role == UserRole.ADMIN) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "Não é permitido se cadastrar como ADMIN diretamente");
         }
+        if (role == UserRole.COMPANY) {
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    "O cadastro empresarial deve ser concluído pelo fluxo de empresas");
+        }
 
         String verificationCode = generateVerificationCode();
 

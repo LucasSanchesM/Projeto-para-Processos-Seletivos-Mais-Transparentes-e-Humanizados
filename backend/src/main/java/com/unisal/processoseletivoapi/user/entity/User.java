@@ -36,6 +36,9 @@ public class User {
     @Column(nullable = false)
     private Boolean active;
 
+    @Column(name = "linkedin_subject", unique = true)
+    private String linkedinSubject;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -116,6 +119,14 @@ public class User {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public String getLinkedinSubject() {
+        return linkedinSubject;
+    }
+
+    public void setLinkedinSubject(String linkedinSubject) {
+        this.linkedinSubject = linkedinSubject;
     }
 
     public LocalDateTime getCreatedAt() {

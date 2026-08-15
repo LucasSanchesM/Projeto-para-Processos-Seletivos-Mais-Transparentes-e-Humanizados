@@ -14,6 +14,7 @@ import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.auth.dtos.LoginRequestDto;
 import com.unisal.processoseletivoapi.auth.dtos.LoginResponseDto;
 import com.unisal.processoseletivoapi.user.UserRepository;
+import com.unisal.processoseletivoapi.user.entity.User;
 
 @Service
 public class AuthService {
@@ -34,17 +35,26 @@ public class AuthService {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "Email ou senha inválidos");
         }
 
+        if (!user.get().getRole().equals(dto.role().name())) {
+            throw new BusinessException(HttpStatus.FORBIDDEN,
+                    "Esta conta não pertence a este tipo de acesso");
+        }
+
         if (!user.get().getActive()) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "Conta não verificada. Verifique seu email para ativar sua conta.");
         }
 
+        return issueToken(user.get());
+    }
+
+    public LoginResponseDto issueToken(User user) {
         var now = Instant.now();
         var expiresIn = 900L;
-        var scope = user.get().getRole();
+        var scope = user.getRole();
 
         var claims = JwtClaimsSet.builder()
                 .issuer("backend_processoseletivo")
-                .subject(user.get().getId().toString())
+                .subject(user.getId().toString())
                 .issuedAt(now)
                 .claim("scope", scope)
                 .expiresAt(now.plusSeconds(expiresIn))
@@ -52,7 +62,7 @@ public class AuthService {
 
         var jwtValue = jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
 
-        var response = new LoginResponseDto(jwtValue, expiresIn);
+        var response = new LoginResponseDto(jwtValue, expiresIn, user.getRole());
 
         return response;
     }

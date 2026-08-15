@@ -182,6 +182,10 @@ public class CandidateProfileService {
                 .orElseGet(() -> {
                     User user = userRepository.findById(userId)
                             .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+                    if (!"CANDIDATE".equals(user.getRole())) {
+                        throw new BusinessException(HttpStatus.FORBIDDEN,
+                                "Apenas candidatos podem acessar o perfil de candidato");
+                    }
                     CandidateProfile newProfile = new CandidateProfile(user);
                     return candidateProfileRepository.save(newProfile);
                 });
