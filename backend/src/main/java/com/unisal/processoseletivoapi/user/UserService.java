@@ -48,7 +48,7 @@ public class UserService {
         if (role == UserRole.ADMIN) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "Não é permitido se cadastrar como ADMIN diretamente");
         }
-
+        
         String verificationCode = generateVerificationCode();
 
         var user = new User();

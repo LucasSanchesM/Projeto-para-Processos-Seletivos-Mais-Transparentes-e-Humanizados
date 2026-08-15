@@ -11,3 +11,5 @@ public record LoginRequestDto(
     @NotBlank(message = "O campo 'password' é obrigatório")
     String password
 ) {}
+
+
