@@ -17,3 +17,5 @@ public record LoginRequestDto(
     @NotNull(message = "O campo 'role' é obrigatório")
     UserRole role
 ) {}
+
+
