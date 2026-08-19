@@ -11,4 +11,6 @@ import com.unisal.processoseletivoapi.company.entity.CompanyProfile;
 @Repository
 public interface CompanyProfileRepository extends JpaRepository<CompanyProfile, UUID> {
     Optional<CompanyProfile> findByUserId(UUID userId);
+
+    boolean existsByCnpj(String cnpj);
 }

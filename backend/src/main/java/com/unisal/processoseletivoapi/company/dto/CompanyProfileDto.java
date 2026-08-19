@@ -4,16 +4,16 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record CompanyProfileDto(
-    UUID id,
-    UUID userId,
-    String companyName,
-    String cnpj,
-    String description,
-    String industry,
-    String website,
-    String city,
-    String state,
-    String logoUrl,
-    LocalDateTime createdAt,
-    LocalDateTime updatedAt
-) {}
+        UUID id,
+        UUID userId,
+        String companyName,
+        String cnpj,
+        String description,
+        String industry,
+        String website,
+        String city,
+        String state,
+        String logoUrl,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt) {
+}

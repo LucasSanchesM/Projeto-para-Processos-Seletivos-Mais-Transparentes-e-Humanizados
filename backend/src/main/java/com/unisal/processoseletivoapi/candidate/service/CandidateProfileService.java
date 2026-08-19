@@ -1,5 +1,6 @@
 package com.unisal.processoseletivoapi.candidate.service;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -7,6 +8,7 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.unisal.processoseletivoapi.candidate.dto.CandidateExperienceDto;
 import com.unisal.processoseletivoapi.candidate.dto.CandidateProfileDto;
@@ -20,6 +22,8 @@ import com.unisal.processoseletivoapi.candidate.entity.CandidateProject;
 import com.unisal.processoseletivoapi.candidate.repository.CandidateExperienceRepository;
 import com.unisal.processoseletivoapi.candidate.repository.CandidateProfileRepository;
 import com.unisal.processoseletivoapi.candidate.repository.CandidateProjectRepository;
+import com.unisal.processoseletivoapi.candidate.storage.ProfileImageStorage;
+import com.unisal.processoseletivoapi.candidate.storage.StoredProfileImage;
 import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.user.UserRepository;
 import com.unisal.processoseletivoapi.user.entity.User;
@@ -27,19 +31,24 @@ import com.unisal.processoseletivoapi.user.entity.User;
 @Service
 public class CandidateProfileService {
 
+    private static final long MAX_AVATAR_SIZE = 5L * 1024 * 1024;
+
     private final CandidateProfileRepository candidateProfileRepository;
     private final CandidateExperienceRepository candidateExperienceRepository;
     private final CandidateProjectRepository candidateProjectRepository;
     private final UserRepository userRepository;
+    private final ProfileImageStorage profileImageStorage;
 
     public CandidateProfileService(CandidateProfileRepository candidateProfileRepository,
             CandidateExperienceRepository candidateExperienceRepository,
             CandidateProjectRepository candidateProjectRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            ProfileImageStorage profileImageStorage) {
         this.candidateProfileRepository = candidateProfileRepository;
         this.candidateExperienceRepository = candidateExperienceRepository;
         this.candidateProjectRepository = candidateProjectRepository;
         this.userRepository = userRepository;
+        this.profileImageStorage = profileImageStorage;
     }
 
     @Transactional
@@ -81,6 +90,32 @@ public class CandidateProfileService {
 
         CandidateProfile saved = candidateProfileRepository.save(profile);
         return toDto(saved);
+    }
+
+    @Transactional
+    public CandidateProfileDto uploadAvatar(UUID userId, MultipartFile file) {
+        CandidateProfile profile = findOrCreateProfile(userId);
+        byte[] content = readAndValidateAvatar(file);
+        ImageFormat format = detectImageFormat(content);
+
+        StoredProfileImage uploaded = profileImageStorage.store(
+                userId,
+                content,
+                format.contentType(),
+                format.extension());
+
+        String previousKey = profile.getProfileImageKey();
+        profile.setProfileImageKey(uploaded.key());
+        profile.setProfileImageUrl(uploaded.url());
+
+        try {
+            CandidateProfile saved = candidateProfileRepository.saveAndFlush(profile);
+            profileImageStorage.deleteQuietly(previousKey);
+            return toDto(saved);
+        } catch (RuntimeException exception) {
+            profileImageStorage.deleteQuietly(uploaded.key());
+            throw exception;
+        }
     }
 
     @Transactional
@@ -178,13 +213,89 @@ public class CandidateProfileService {
     }
 
     private CandidateProfile findOrCreateProfile(UUID userId) {
-        return candidateProfileRepository.findByUserId(userId)
+        CandidateProfile profile = candidateProfileRepository.findByUserId(userId)
                 .orElseGet(() -> {
                     User user = userRepository.findById(userId)
                             .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
+                    if (!"CANDIDATE".equals(user.getRole())) {
+                        throw new BusinessException(HttpStatus.FORBIDDEN,
+                                "Apenas candidatos podem acessar o perfil de candidato");
+                    }
                     CandidateProfile newProfile = new CandidateProfile(user);
                     return candidateProfileRepository.save(newProfile);
                 });
+
+        if (!"CANDIDATE".equals(profile.getUser().getRole())) {
+            throw new BusinessException(HttpStatus.FORBIDDEN,
+                    "Apenas candidatos podem acessar o perfil de candidato");
+        }
+        return profile;
+    }
+
+    private byte[] readAndValidateAvatar(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Selecione uma imagem de perfil");
+        }
+        if (file.getSize() > MAX_AVATAR_SIZE) {
+            throw new BusinessException(HttpStatus.PAYLOAD_TOO_LARGE,
+                    "A imagem deve ter no máximo 5 MB");
+        }
+        try {
+            byte[] content = file.getBytes();
+            detectImageFormat(content);
+            return content;
+        } catch (IOException exception) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Não foi possível ler a imagem enviada");
+        }
+    }
+
+    private ImageFormat detectImageFormat(byte[] content) {
+        if (isPng(content)) {
+            return new ImageFormat("image/png", "png");
+        }
+        if (isJpeg(content)) {
+            return new ImageFormat("image/jpeg", "jpg");
+        }
+        if (isWebp(content)) {
+            return new ImageFormat("image/webp", "webp");
+        }
+        throw new BusinessException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                "Formato inválido. Envie uma imagem PNG, JPEG ou WebP");
+    }
+
+    private boolean isPng(byte[] content) {
+        byte[] signature = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+        if (content.length < signature.length) {
+            return false;
+        }
+        for (int index = 0; index < signature.length; index++) {
+            if (content[index] != signature[index]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isJpeg(byte[] content) {
+        return content.length >= 3
+                && content[0] == (byte) 0xFF
+                && content[1] == (byte) 0xD8
+                && content[2] == (byte) 0xFF;
+    }
+
+    private boolean isWebp(byte[] content) {
+        return content.length >= 12
+                && content[0] == 'R'
+                && content[1] == 'I'
+                && content[2] == 'F'
+                && content[3] == 'F'
+                && content[8] == 'W'
+                && content[9] == 'E'
+                && content[10] == 'B'
+                && content[11] == 'P';
+    }
+
+    private record ImageFormat(String contentType, String extension) {
     }
 
     private CandidateProfileDto toDto(CandidateProfile profile) {
@@ -215,6 +326,7 @@ public class CandidateProfileService {
                 profile.getUser().getId(),
                 profile.getUser().getName(),
                 profile.getUser().getEmail(),
+                profile.getProfileImageUrl(),
                 profile.getHeadline(),
                 profile.getSummary(),
                 profile.getPhone(),
