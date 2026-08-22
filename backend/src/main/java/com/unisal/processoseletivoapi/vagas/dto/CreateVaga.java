@@ -2,6 +2,11 @@
 package com.unisal.processoseletivoapi.vagas.dto;
 
 import java.math.BigDecimal;
+import java.util.UUID;
+
+import com.unisal.processoseletivoapi.vagas.VagaRole;
+import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
+import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -22,11 +27,20 @@ public record CreateVaga(
     @NotBlank(message = "O campo 'beneficios' é obrigatório")
     String beneficios,
 
-    @NotBlank(message = "O campo 'nomeEmpresa' é obrigatório")
-    String nomeEmpresa,
+    @NotNull(message = "O campo 'companyProfileId' é obrigatório")
+    UUID companyProfileId,
 
-    @NotBlank(message = "O campo 'cnpj' é obrigatório")
-    String cnpj
+    String cidade,
+
+    String estado,
+
+    @NotNull(message = "O campo 'categoria' é obrigatório")
+    VagaRole categoria,
+
+    @NotNull(message = "O campo 'modalidade' é obrigatório")
+    ModalidadeVaga modalidade,
+
+    @NotNull(message = "O campo 'nivelExperiencia' é obrigatório")
+    NivelExperiencia nivelExperiencia
 
 ) {}
-

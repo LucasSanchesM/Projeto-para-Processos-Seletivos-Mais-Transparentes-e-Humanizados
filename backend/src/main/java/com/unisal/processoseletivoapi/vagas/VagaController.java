@@ -1,5 +1,6 @@
 package com.unisal.processoseletivoapi.vagas;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,11 +13,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.unisal.processoseletivoapi.vagas.dto.CreateVaga;
 import com.unisal.processoseletivoapi.vagas.dto.UpdateVaga;
 import com.unisal.processoseletivoapi.vagas.dto.VagaResponse;
+import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
+import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
 
 import jakarta.validation.Valid;
 
@@ -26,7 +30,6 @@ public class VagaController {
 
     private final VagaService vagaService;
 
-    // CONSTRUTOR
     public VagaController(VagaService vagaService) {
         this.vagaService = vagaService;
     }
@@ -43,11 +46,34 @@ public class VagaController {
                 .body(vaga);
     }
 
-    // LISTAR TODAS AS VAGAS
+    // LISTAR TODAS AS VAGAS COM FILTROS OPCIONAIS
     @GetMapping
-    public ResponseEntity<List<VagaResponse>> findAllVagas() {
+    public ResponseEntity<List<VagaResponse>> findAllVagas(
+            @RequestParam(required = false) String titulo,
+            @RequestParam(required = false) VagaRole categoria,
+            @RequestParam(required = false) ModalidadeVaga modalidade,
+            @RequestParam(required = false) NivelExperiencia nivelExperiencia,
+            @RequestParam(required = false) BigDecimal salarioMin,
+            @RequestParam(required = false) BigDecimal salarioMax,
+            @RequestParam(required = false) String cidade,
+            @RequestParam(required = false) String estado,
+            @RequestParam(required = false) Boolean ativa,
+            @RequestParam(required = false) UUID companyProfileId) {
 
-        var vagas = vagaService.findAllVagas();
+        var vagas = vagaService.findAllWithFilters(
+                titulo, categoria, modalidade, nivelExperiencia,
+                salarioMin, salarioMax, cidade, estado, ativa, companyProfileId
+        );
+
+        return ResponseEntity.ok(vagas);
+    }
+
+    // LISTAR VAGAS DE UMA EMPRESA ESPECÍFICA
+    @GetMapping("/empresa/{companyProfileId}")
+    public ResponseEntity<List<VagaResponse>> findVagasByCompany(
+            @PathVariable UUID companyProfileId) {
+
+        var vagas = vagaService.findAllByCompany(companyProfileId);
 
         return ResponseEntity.ok(vagas);
     }

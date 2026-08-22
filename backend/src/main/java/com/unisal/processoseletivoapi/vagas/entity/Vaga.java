@@ -5,11 +5,19 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.unisal.processoseletivoapi.company.entity.CompanyProfile;
+import com.unisal.processoseletivoapi.vagas.VagaRole;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -35,11 +43,30 @@ public class Vaga {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String beneficios;
 
-    @Column(name = "company_name", nullable = false)
-    private String nomeEmpresa;
-    
-    @Column(name = "company_cnpj", nullable = false)
-    private String cnpj;
+    // Relacionamento real com a empresa
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_profile_id", nullable = false)
+    private CompanyProfile empresa;
+
+    // Localização da vaga
+    @Column
+    private String cidade;
+
+    @Column(length = 2)
+    private String estado;
+
+    // Categoria e perfil da vaga
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private VagaRole categoria;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ModalidadeVaga modalidade;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private NivelExperiencia nivelExperiencia;
 
     @Column(nullable = false)
     private Boolean ativa;
@@ -51,18 +78,6 @@ public class Vaga {
     private LocalDateTime updatedAt;
 
     public Vaga() {
-    }
-
-    public Vaga(String titulo, BigDecimal salario, String descricao,
-                String beneficios, String nomeEmpresa, String cnpj) {
-
-        this.titulo = titulo;
-        this.salario = salario;
-        this.descricao = descricao;
-        this.beneficios = beneficios;
-        this.nomeEmpresa = nomeEmpresa;
-        this.cnpj = cnpj;
-        this.ativa = true;
     }
 
     @PrePersist
@@ -120,20 +135,52 @@ public class Vaga {
         this.beneficios = beneficios;
     }
 
-    public String getNomeEmpresa() {
-        return nomeEmpresa;
+    public CompanyProfile getEmpresa() {
+        return empresa;
     }
 
-    public void setNomeEmpresa(String nomeEmpresa) {
-        this.nomeEmpresa = nomeEmpresa;
+    public void setEmpresa(CompanyProfile empresa) {
+        this.empresa = empresa;
     }
 
-    public String getCnpj() {
-        return cnpj;
+    public String getCidade() {
+        return cidade;
     }
 
-    public void setCnpj(String cnpj) {
-        this.cnpj = cnpj;
+    public void setCidade(String cidade) {
+        this.cidade = cidade;
+    }
+
+    public String getEstado() {
+        return estado;
+    }
+
+    public void setEstado(String estado) {
+        this.estado = estado;
+    }
+
+    public VagaRole getCategoria() {
+        return categoria;
+    }
+
+    public void setCategoria(VagaRole categoria) {
+        this.categoria = categoria;
+    }
+
+    public ModalidadeVaga getModalidade() {
+        return modalidade;
+    }
+
+    public void setModalidade(ModalidadeVaga modalidade) {
+        this.modalidade = modalidade;
+    }
+
+    public NivelExperiencia getNivelExperiencia() {
+        return nivelExperiencia;
+    }
+
+    public void setNivelExperiencia(NivelExperiencia nivelExperiencia) {
+        this.nivelExperiencia = nivelExperiencia;
     }
 
     public Boolean getAtiva() {
@@ -160,4 +207,3 @@ public class Vaga {
         this.updatedAt = updatedAt;
     }
 }
-
