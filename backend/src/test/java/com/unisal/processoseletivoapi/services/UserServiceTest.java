@@ -17,14 +17,11 @@ import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -71,6 +68,9 @@ public class UserServiceTest {
 
     @Captor
     private ArgumentCaptor<String> codeCaptor;
+
+    @Captor
+    private ArgumentCaptor<EmailSendRequest> emailSendRequestArgumentCaptor;
 
     @Nested
     class createUser{
@@ -334,4 +334,111 @@ public class UserServiceTest {
 
         }
     }
+
+    @Nested
+    class resendVerificationCode{
+        @Test
+        @DisplayName("Should resend verification email succefully")
+        void shouldResendVerificationEmailSuccefullly(){
+            //===== ARRANGE =======
+            var input = "email@teste.com";
+            var user = new User();
+            user.setEmail("email@teste.com");
+            user.setActive(false);
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(input);
+            doReturn(false).when(verificationCodeService).isRateLimited(user);
+
+
+            //===== ACT =======
+            userService.resendVerificationCode(input);
+
+            //===== ASSERT =======
+            //Verifica se o input enviado pelo usuario foi o mesmo colocado no campo email do sistema de filas
+            verify(rabbitTemplate).convertAndSend(eq("email.exchange"), eq("email.confirmacao.key"), emailSendRequestArgumentCaptor.capture());
+            var emailSend = emailSendRequestArgumentCaptor.getValue();
+            assertEquals(input, emailSend.email());
+
+            //Verifica que o codigo gerado e enviado ao email é o mesmo salvo no banco
+            verify(verificationCodeService, times(1)).saveCode(userArgumentCaptor.capture(), codeCaptor.capture());
+            var codeCaptured = codeCaptor.getValue();
+            assertEquals(codeCaptured, emailSend.code());
+        }
+        @Test
+        @DisplayName("Should not resend verification email when email don't exist")
+        void shouldNotResendVerificationEmailWhenEmailDontExist(){
+            //===== ARRANGE =======
+            var input = "email@teste.com";
+            doReturn(Optional.empty()).when(userRepository).findByEmail(input);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> userService.resendVerificationCode(input));
+
+            //===== ASSERT =======
+
+            //Verificada se exception enviado foi o correto
+            assertEquals("Usuário não encontrado", response.getMessage());
+
+            //Verifica se o email nao foi colocado na fila
+            verify(rabbitTemplate, never()).convertAndSend(eq("email.exchange"), eq("email.confirmacao.key"), emailSendRequestArgumentCaptor.capture());
+            //Verifica que o codigo nao foi salvo no banco
+            verify(verificationCodeService, never()).saveCode(userArgumentCaptor.capture(), codeCaptor.capture());
+        }
+
+        @Test
+        @DisplayName("Should not resend verification user already activated")
+        void shouldNotResendVerificationEmailWhenUserAlreadyActivated(){
+            //===== ARRANGE =======
+            var input = "email@teste.com";
+            var user = new User();
+            user.setEmail("email@teste.com");
+            user.setActive(true);
+
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(input);
+            
+
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> userService.resendVerificationCode(input));
+
+            //===== ASSERT =======
+
+            //Verificada se exception enviado foi o correto
+            assertEquals("Conta já está ativa", response.getMessage());
+
+            //Verifica se o email nao foi colocado na fila
+            verify(rabbitTemplate, never()).convertAndSend(eq("email.exchange"), eq("email.confirmacao.key"), emailSendRequestArgumentCaptor.capture());
+            //Verifica que o codigo nao foi salvo no banco
+            verify(verificationCodeService, never()).saveCode(userArgumentCaptor.capture(), codeCaptor.capture());
+        }
+
+        @Test
+        @DisplayName("Should not resend verification verification code is RateLimited")
+        void shouldNotResendVerificationEmailWhenVerificationCodeIsRateLimited(){
+            //===== ARRANGE =======
+            var input = "email@teste.com";
+            var user = new User();
+            user.setEmail("email@teste.com");
+            user.setActive(false);
+
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(input);
+            doReturn(true).when(verificationCodeService).isRateLimited(user);
+
+
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> userService.resendVerificationCode(input));
+
+            //===== ASSERT =======
+
+            //Verificada se exception enviado foi o correto
+            assertEquals("Código de verificação já enviado no último minuto", response.getMessage());
+
+            //Verifica se o email nao foi colocado na fila
+            verify(rabbitTemplate, never()).convertAndSend(eq("email.exchange"), eq("email.confirmacao.key"), emailSendRequestArgumentCaptor.capture());
+            //Verifica que o codigo nao foi salvo no banco
+            verify(verificationCodeService, never()).saveCode(userArgumentCaptor.capture(), codeCaptor.capture());
+        }
+
+    }
+
 }
