@@ -72,6 +72,7 @@ public class UserServiceTest {
     @Captor
     private ArgumentCaptor<EmailSendRequest> emailSendRequestArgumentCaptor;
 
+
     @Nested
     class createUser{
         @Test
@@ -437,6 +438,45 @@ public class UserServiceTest {
             verify(rabbitTemplate, never()).convertAndSend(eq("email.exchange"), eq("email.confirmacao.key"), emailSendRequestArgumentCaptor.capture());
             //Verifica que o codigo nao foi salvo no banco
             verify(verificationCodeService, never()).saveCode(userArgumentCaptor.capture(), codeCaptor.capture());
+        }
+
+    }
+
+    @Nested
+    class findAllUsers{
+
+        @Test
+        @DisplayName("Should return users succefully")
+        void shouldReturnUserSuccefully(){
+
+            //===== ARRANGE =======
+            var user1 = new User();
+            user1.setName("pessoa1");
+            user1.setEmail("pessoa1@teste.com");
+            var user2 = new User();
+            user2.setName("pessoa2");
+            user2.setEmail("pessoa2@teste.com");
+            List<User> users = List.of(user1, user2);
+
+            doReturn(users).when(userRepository).findAll();
+
+            //===== ACT =======
+            var output = userService.findAllUsers();
+
+            //===== ASSERT =======
+            var user1Returned = output.get(0);
+            var user2Returned = output.get(1);
+
+            //Verifica que a quantidade de usuarios retornada é a mesma que haveria no banco
+            assertEquals(2, output.size());
+
+
+            //Verifica que os usuarioas que estariam no banco seriam os mesmos retornados
+            assertEquals(user1.getName(), user1Returned.name());
+            assertEquals(user1.getEmail(), user1Returned.email());
+
+            assertEquals(user2.getName(), user2Returned.name());
+            assertEquals(user2.getEmail(), user2Returned.email());
         }
 
     }
