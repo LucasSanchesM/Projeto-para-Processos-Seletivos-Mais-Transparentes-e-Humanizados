@@ -40,6 +40,7 @@ import com.unisal.processoseletivoapi.user.UserRepository;
 import com.unisal.processoseletivoapi.user.UserRole;
 import com.unisal.processoseletivoapi.user.UserService;
 import com.unisal.processoseletivoapi.user.dto.CreateUserDto;
+import com.unisal.processoseletivoapi.user.dto.UpdateUserDto;
 import com.unisal.processoseletivoapi.user.entity.User;
 
 @ExtendWith(MockitoExtension.class)
@@ -529,7 +530,83 @@ public class UserServiceTest {
             assertEquals("Usuário não encontrado", response.getMessage());
 
         }
+    }
 
+    @Nested
+    class updateUser{
+        @Test
+        @DisplayName("Should update a user succefully")
+        void shouldUpdateAUSerSuccefully(){
+            //===== ARRANGE =======
+            var userId = UUID.randomUUID();
+            var infosToUpdate = new UpdateUserDto("Jairo",
+                                                    "jairo@teste.com",
+                                                    "123456789",
+                                                    UserRole.CANDIDATE,
+                                                    true);
+            var user = new User();
+            user.setId(userId);
+            user.setName("pessoa");
+            user.setEmail("pessoa@teste.com");
+            user.setPasswordHash("criptografado");
+            user.setRole("CANDIDATE");
+            user.setActive(true);
+
+            doReturn(Optional.of(user)).when(userRepository).findById(userId);
+            when(userRepository.save(any(User.class))).thenAnswer(chamado -> {
+                var userSaved = chamado.getArgument(0);
+                return userSaved;
+            });
+            
+            //===== ACT =======
+            var output = userService.updateUser(userId, infosToUpdate);
+
+            //===== ASSERT =======
+
+            //Verifica se o nome as informações de usuarias registradas no banco seriam condizentes com as atualizadas
+            verify(userRepository).save(userArgumentCaptor.capture());
+            var userCaptured = userArgumentCaptor.getValue();
+
+            assertEquals(infosToUpdate.name(), userCaptured.getName());
+            assertEquals(infosToUpdate.email(), userCaptured.getEmail());
+            verify(passwordEncoder).encode(infosToUpdate.password());
+
+            //Verifica se o retorno do metodo condiz com informações atualizadas
+            assertEquals(infosToUpdate.name(), output.name());
+            assertEquals(infosToUpdate.email(), output.email());
+
+            //Verifica se usuario retornado foi o mesmo em que foi solicitado alteração
+            assertEquals(userId, output.id());
+
+            //Verifica se o usuario que sofreu alteração é o mesmo em que foi informado o
+            assertEquals(userId, userCaptured.getId());
+        }
+
+        @Test
+        @DisplayName("Should not update a user when user id don't find")
+        void shouldNotUpdateAUSerWhenUserIdDontFind(){
+            //===== ARRANGE =======
+            var userId = UUID.randomUUID();
+            var infosToUpdate = new UpdateUserDto("Jairo",
+                                                    "jairo@teste.com",
+                                                    "123456789",
+                                                    UserRole.CANDIDATE,
+                                                    true);
+
+            doReturn(Optional.empty()).when(userRepository).findById(userId);
+            
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> userService.updateUser(userId, infosToUpdate));
+
+            //===== ASSERT =======
+
+            //Verifica se a excessao lançada é a correta
+            assertEquals("Usuário não encontrado", response.getMessage());
+            verify(userRepository, never()).save(any(User.class));
+
+
+            
+        }
 
     }
 
