@@ -3,6 +3,7 @@ package com.unisal.processoseletivoapi.services;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -17,11 +18,15 @@ import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -478,6 +483,53 @@ public class UserServiceTest {
             assertEquals(user2.getName(), user2Returned.name());
             assertEquals(user2.getEmail(), user2Returned.email());
         }
+
+    }
+
+    @Nested
+    class findUserById{
+        @Test
+        @DisplayName("Should return a user succefullly")
+        void shouldReturnAUserSuccefully(){
+
+            //===== ARRANGE =======
+            var userId = UUID.randomUUID();
+            var user = new User();
+            user.setId(userId);
+            user.setName("pessoa");
+            user.setEmail("pessoa@email.com");
+
+            doReturn(Optional.of(user)).when(userRepository).findById(userId);
+
+            //===== ACT =======
+            var output = userService.findUserById(userId);
+
+            //===== ASSERT =======
+
+            //Verifica se o usuario capturado com o id é mesmo do id passado
+            assertEquals(userId, output.id());
+
+        }
+
+        @Test
+        @DisplayName("Should not return a user when userId don't find")
+        void shouldNotReturnAUserWhenUserIdDontFind(){
+
+            //===== ARRANGE =======
+            var userId = UUID.randomUUID();
+
+            doReturn(Optional.empty()).when(userRepository).findById(userId);
+
+            //===== ACT =======
+            var response =  assertThrows(BusinessException.class, () -> userService.findUserById(userId));
+
+            //===== ASSERT =======
+
+            //Verifica se a excessão lançada é a correta
+            assertEquals("Usuário não encontrado", response.getMessage());
+
+        }
+
 
     }
 
