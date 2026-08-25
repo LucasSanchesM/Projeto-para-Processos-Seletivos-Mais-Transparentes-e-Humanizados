@@ -78,6 +78,9 @@ public class UserServiceTest {
     @Captor
     private ArgumentCaptor<EmailSendRequest> emailSendRequestArgumentCaptor;
 
+    @Captor
+    private ArgumentCaptor<UUID> idCaptor;
+
 
     @Nested
     class createUser{
@@ -604,10 +607,71 @@ public class UserServiceTest {
             assertEquals("Usuário não encontrado", response.getMessage());
             verify(userRepository, never()).save(any(User.class));
 
-
-            
         }
 
     }
 
+
+    @Nested
+    class deleteUser{
+        @Test
+        @DisplayName("Should delete a user succefully")
+        void shouldDeleteAUserSuccefully(){
+            //===== ARRANGE =======
+            var userId = UUID.randomUUID();
+            var user = new User();
+            user.setId(userId);
+            user.setName("pessoaTeste");
+            user.setEmail("pessoa@teste.com");
+
+            doReturn(Optional.of(user)).when(userRepository).findById(userId);
+
+
+            //===== ACT =======
+            userService.deleteUser(userId);
+            
+            //===== ASSERT =======
+
+            //Verifica se o id que seria usado para pesquisa bate com o inserido no metodo
+            verify(userRepository).findById(idCaptor.capture());
+            var idCaptured = idCaptor.getValue();
+            assertEquals(userId, idCaptured);
+
+            //Verica se o metodos foram chamados corretamente e quais valores seriam inseridos
+            verify(verificationCodeService).removeCode(userArgumentCaptor.capture());
+            verify(userRepository).delete(userArgumentCaptor.capture());
+            var usersCaptured = userArgumentCaptor.getAllValues();
+
+
+            //Verifica se usuario inserido como parametro no remove code bate com o existente no banco
+            assertEquals(user, usersCaptured.get(0));
+
+            //Verifica se usuario inserido como parametro no delete user bate com o existente no banco
+            assertEquals(user, usersCaptured.get(1));
+
+        }
+        
+        @Test
+        @DisplayName("Should not delete a user when id don't find")
+        void shouldNotDeleteAUserWhenIdDontFind(){
+            //===== ARRANGE =======
+            var userId = UUID.randomUUID();
+            doReturn(Optional.empty()).when(userRepository).findById(userId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> userService.deleteUser(userId));
+            
+            //===== ASSERT =======
+
+            //Verifica se a mensagem de excessao lançada é a correta
+            assertEquals("Usuário não encontrado", response.getMessage());
+
+            verify(userRepository, never()).delete(any(User.class));
+            verify(verificationCodeService, never()).removeCode(any(User.class));
+
+        }
+
+
+
+    }
 }
