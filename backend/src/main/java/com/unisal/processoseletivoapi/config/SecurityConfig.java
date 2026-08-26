@@ -61,11 +61,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/verify-email").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/resend-code").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                        .requestMatchers("/vagas/**").permitAll()
                         .anyRequest()
                         .authenticated())
                 .oauth2Login(oauth2 -> oauth2
-                        .authorizationEndpoint(endpoint ->
-                                endpoint.authorizationRequestResolver(authorizationRequestResolver))
+                        .authorizationEndpoint(
+                                endpoint -> endpoint.authorizationRequestResolver(authorizationRequestResolver))
                         .tokenEndpoint(token -> token.accessTokenResponseClient(tokenResponseClient))
                         .successHandler(linkedInOAuthSuccessHandler)
                         .failureHandler(linkedInOAuthFailureHandler))
