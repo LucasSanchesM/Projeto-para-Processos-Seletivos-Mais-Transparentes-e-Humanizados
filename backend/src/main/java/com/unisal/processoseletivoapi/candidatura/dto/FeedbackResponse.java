@@ -1,0 +1,22 @@
+package com.unisal.processoseletivoapi.candidatura.dto;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import com.unisal.processoseletivoapi.candidatura.entity.EtapaProcesso;
+
+public record FeedbackResponse(
+
+        UUID id,
+        UUID candidaturaId,
+        EtapaProcesso etapa,
+        String etapaDescricao,
+        String titulo,
+        String mensagem,
+        Integer nota,
+        String autorNome,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+
+) {
+}

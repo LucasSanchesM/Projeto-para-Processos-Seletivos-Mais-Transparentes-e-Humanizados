@@ -32,13 +32,35 @@ public class RabbitMqConfig {
     }
 
     @Bean
-    public Binding binding(Queue queue, DirectExchange exchange) {
-        return BindingBuilder.bind(queue).to(exchange).with("email.confirmacao.key");
+    public Binding binding() {
+        return BindingBuilder.bind(queue()).to(exchange()).with("email.confirmacao.key");
     }
 
     @Bean
-    public Binding bindingDlq(Queue queueDlq, DirectExchange exchange) {
-        return BindingBuilder.bind(queueDlq).to(exchange).with("email.confirmacao.dlq.key");
+    public Binding bindingDlq() {
+        return BindingBuilder.bind(queueDlq()).to(exchange()).with("email.confirmacao.dlq.key");
+    }
+
+    @Bean
+    public Queue candidaturaQueue() {
+        return new Queue("candidatura.atualizacao", true, false, false,
+                Map.of("x-dead-letter-routing-key", "candidatura.atualizacao.dlq.key",
+                        "x-dead-letter-exchange", "email.exchange"));
+    }
+
+    @Bean
+    public Queue candidaturaQueueDlq() {
+        return new Queue("candidatura.atualizacao.dlq", true, false, false, null);
+    }
+
+    @Bean
+    public Binding candidaturaBinding() {
+        return BindingBuilder.bind(candidaturaQueue()).to(exchange()).with("candidatura.atualizacao.key");
+    }
+
+    @Bean
+    public Binding candidaturaBindingDlq() {
+        return BindingBuilder.bind(candidaturaQueueDlq()).to(exchange()).with("candidatura.atualizacao.dlq.key");
     }
 
     @Bean

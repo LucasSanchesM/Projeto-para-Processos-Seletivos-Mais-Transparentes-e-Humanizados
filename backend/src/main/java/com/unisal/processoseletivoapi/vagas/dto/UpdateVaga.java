@@ -1,0 +1,28 @@
+
+package com.unisal.processoseletivoapi.vagas.dto;
+
+import java.math.BigDecimal;
+
+import com.unisal.processoseletivoapi.vagas.VagaRole;
+import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
+import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
+
+import jakarta.validation.constraints.DecimalMin;
+
+public record UpdateVaga(
+
+    String titulo,
+
+    @DecimalMin(value = "0.0", message = "O salário não pode ser negativo")
+    BigDecimal salario,
+
+    String descricao,
+    String beneficios,
+    String cidade,
+    String estado,
+    VagaRole categoria,
+    ModalidadeVaga modalidade,
+    NivelExperiencia nivelExperiencia,
+    Boolean ativa
+
+) {}

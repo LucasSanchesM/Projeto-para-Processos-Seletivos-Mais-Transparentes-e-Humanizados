@@ -1,0 +1,46 @@
+
+package com.unisal.processoseletivoapi.vagas.dto;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+import com.unisal.processoseletivoapi.vagas.VagaRole;
+import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
+import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
+
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record CreateVaga(
+
+    @NotBlank(message = "O campo 'titulo' é obrigatório")
+    String titulo,
+
+    @NotNull(message = "O campo 'salario' é obrigatório")
+    @DecimalMin(value = "0.0", inclusive = true, message = "O salário não pode ser negativo")
+    BigDecimal salario,
+
+    @NotBlank(message = "O campo 'descricao' é obrigatório")
+    String descricao,
+
+    @NotBlank(message = "O campo 'beneficios' é obrigatório")
+    String beneficios,
+
+    @NotNull(message = "O campo 'companyProfileId' é obrigatório")
+    UUID companyProfileId,
+
+    String cidade,
+
+    String estado,
+
+    @NotNull(message = "O campo 'categoria' é obrigatório")
+    VagaRole categoria,
+
+    @NotNull(message = "O campo 'modalidade' é obrigatório")
+    ModalidadeVaga modalidade,
+
+    @NotNull(message = "O campo 'nivelExperiencia' é obrigatório")
+    NivelExperiencia nivelExperiencia
+
+) {}
