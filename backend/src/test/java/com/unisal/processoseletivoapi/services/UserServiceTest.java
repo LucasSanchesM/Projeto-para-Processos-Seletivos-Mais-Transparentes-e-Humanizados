@@ -3,6 +3,7 @@ package com.unisal.processoseletivoapi.services;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,6 +23,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -38,6 +40,7 @@ import com.unisal.processoseletivoapi.user.UserRepository;
 import com.unisal.processoseletivoapi.user.UserRole;
 import com.unisal.processoseletivoapi.user.UserService;
 import com.unisal.processoseletivoapi.user.dto.CreateUserDto;
+import com.unisal.processoseletivoapi.user.dto.UpdateUserDto;
 import com.unisal.processoseletivoapi.user.entity.User;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,6 +74,13 @@ public class UserServiceTest {
 
     @Captor
     private ArgumentCaptor<String> codeCaptor;
+
+    @Captor
+    private ArgumentCaptor<EmailSendRequest> emailSendRequestArgumentCaptor;
+
+    @Captor
+    private ArgumentCaptor<UUID> idCaptor;
+
 
     @Nested
     class createUser{
@@ -333,5 +343,335 @@ public class UserServiceTest {
             verify(verificationCodeService, never()).saveCode(any(User.class), anyString());
 
         }
+    }
+
+    @Nested
+    class resendVerificationCode{
+        @Test
+        @DisplayName("Should resend verification email succefully")
+        void shouldResendVerificationEmailSuccefullly(){
+            //===== ARRANGE =======
+            var input = "email@teste.com";
+            var user = new User();
+            user.setEmail("email@teste.com");
+            user.setActive(false);
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(input);
+            doReturn(false).when(verificationCodeService).isRateLimited(user);
+
+
+            //===== ACT =======
+            userService.resendVerificationCode(input);
+
+            //===== ASSERT =======
+            //Verifica se o input enviado pelo usuario foi o mesmo colocado no campo email do sistema de filas
+            verify(rabbitTemplate).convertAndSend(eq("email.exchange"), eq("email.confirmacao.key"), emailSendRequestArgumentCaptor.capture());
+            var emailSend = emailSendRequestArgumentCaptor.getValue();
+            assertEquals(input, emailSend.email());
+
+            //Verifica que o codigo gerado e enviado ao email é o mesmo salvo no banco
+            verify(verificationCodeService, times(1)).saveCode(userArgumentCaptor.capture(), codeCaptor.capture());
+            var codeCaptured = codeCaptor.getValue();
+            assertEquals(codeCaptured, emailSend.code());
+        }
+        @Test
+        @DisplayName("Should not resend verification email when email don't exist")
+        void shouldNotResendVerificationEmailWhenEmailDontExist(){
+            //===== ARRANGE =======
+            var input = "email@teste.com";
+            doReturn(Optional.empty()).when(userRepository).findByEmail(input);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> userService.resendVerificationCode(input));
+
+            //===== ASSERT =======
+
+            //Verificada se exception enviado foi o correto
+            assertEquals("Usuário não encontrado", response.getMessage());
+
+            //Verifica se o email nao foi colocado na fila
+            verify(rabbitTemplate, never()).convertAndSend(eq("email.exchange"), eq("email.confirmacao.key"), emailSendRequestArgumentCaptor.capture());
+            //Verifica que o codigo nao foi salvo no banco
+            verify(verificationCodeService, never()).saveCode(userArgumentCaptor.capture(), codeCaptor.capture());
+        }
+
+        @Test
+        @DisplayName("Should not resend verification user already activated")
+        void shouldNotResendVerificationEmailWhenUserAlreadyActivated(){
+            //===== ARRANGE =======
+            var input = "email@teste.com";
+            var user = new User();
+            user.setEmail("email@teste.com");
+            user.setActive(true);
+
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(input);
+            
+
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> userService.resendVerificationCode(input));
+
+            //===== ASSERT =======
+
+            //Verificada se exception enviado foi o correto
+            assertEquals("Conta já está ativa", response.getMessage());
+
+            //Verifica se o email nao foi colocado na fila
+            verify(rabbitTemplate, never()).convertAndSend(eq("email.exchange"), eq("email.confirmacao.key"), emailSendRequestArgumentCaptor.capture());
+            //Verifica que o codigo nao foi salvo no banco
+            verify(verificationCodeService, never()).saveCode(userArgumentCaptor.capture(), codeCaptor.capture());
+        }
+
+        @Test
+        @DisplayName("Should not resend verification verification code is RateLimited")
+        void shouldNotResendVerificationEmailWhenVerificationCodeIsRateLimited(){
+            //===== ARRANGE =======
+            var input = "email@teste.com";
+            var user = new User();
+            user.setEmail("email@teste.com");
+            user.setActive(false);
+
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(input);
+            doReturn(true).when(verificationCodeService).isRateLimited(user);
+
+
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> userService.resendVerificationCode(input));
+
+            //===== ASSERT =======
+
+            //Verificada se exception enviado foi o correto
+            assertEquals("Código de verificação já enviado no último minuto", response.getMessage());
+
+            //Verifica se o email nao foi colocado na fila
+            verify(rabbitTemplate, never()).convertAndSend(eq("email.exchange"), eq("email.confirmacao.key"), emailSendRequestArgumentCaptor.capture());
+            //Verifica que o codigo nao foi salvo no banco
+            verify(verificationCodeService, never()).saveCode(userArgumentCaptor.capture(), codeCaptor.capture());
+        }
+
+    }
+
+    @Nested
+    class findAllUsers{
+
+        @Test
+        @DisplayName("Should return users succefully")
+        void shouldReturnUserSuccefully(){
+
+            //===== ARRANGE =======
+            var user1 = new User();
+            user1.setName("pessoa1");
+            user1.setEmail("pessoa1@teste.com");
+            var user2 = new User();
+            user2.setName("pessoa2");
+            user2.setEmail("pessoa2@teste.com");
+            List<User> users = List.of(user1, user2);
+
+            doReturn(users).when(userRepository).findAll();
+
+            //===== ACT =======
+            var output = userService.findAllUsers();
+
+            //===== ASSERT =======
+            var user1Returned = output.get(0);
+            var user2Returned = output.get(1);
+
+            //Verifica que a quantidade de usuarios retornada é a mesma que haveria no banco
+            assertEquals(2, output.size());
+
+
+            //Verifica que os usuarioas que estariam no banco seriam os mesmos retornados
+            assertEquals(user1.getName(), user1Returned.name());
+            assertEquals(user1.getEmail(), user1Returned.email());
+
+            assertEquals(user2.getName(), user2Returned.name());
+            assertEquals(user2.getEmail(), user2Returned.email());
+        }
+
+    }
+
+    @Nested
+    class findUserById{
+        @Test
+        @DisplayName("Should return a user succefullly")
+        void shouldReturnAUserSuccefully(){
+
+            //===== ARRANGE =======
+            var userId = UUID.randomUUID();
+            var user = new User();
+            user.setId(userId);
+            user.setName("pessoa");
+            user.setEmail("pessoa@email.com");
+
+            doReturn(Optional.of(user)).when(userRepository).findById(userId);
+
+            //===== ACT =======
+            var output = userService.findUserById(userId);
+
+            //===== ASSERT =======
+
+            //Verifica se o usuario capturado com o id é mesmo do id passado
+            assertEquals(userId, output.id());
+
+        }
+
+        @Test
+        @DisplayName("Should not return a user when userId don't find")
+        void shouldNotReturnAUserWhenUserIdDontFind(){
+
+            //===== ARRANGE =======
+            var userId = UUID.randomUUID();
+
+            doReturn(Optional.empty()).when(userRepository).findById(userId);
+
+            //===== ACT =======
+            var response =  assertThrows(BusinessException.class, () -> userService.findUserById(userId));
+
+            //===== ASSERT =======
+
+            //Verifica se a excessão lançada é a correta
+            assertEquals("Usuário não encontrado", response.getMessage());
+
+        }
+    }
+
+    @Nested
+    class updateUser{
+        @Test
+        @DisplayName("Should update a user succefully")
+        void shouldUpdateAUSerSuccefully(){
+            //===== ARRANGE =======
+            var userId = UUID.randomUUID();
+            var infosToUpdate = new UpdateUserDto("Jairo",
+                                                    "jairo@teste.com",
+                                                    "123456789",
+                                                    UserRole.CANDIDATE,
+                                                    true);
+            var user = new User();
+            user.setId(userId);
+            user.setName("pessoa");
+            user.setEmail("pessoa@teste.com");
+            user.setPasswordHash("criptografado");
+            user.setRole("CANDIDATE");
+            user.setActive(true);
+
+            doReturn(Optional.of(user)).when(userRepository).findById(userId);
+            when(userRepository.save(any(User.class))).thenAnswer(chamado -> {
+                var userSaved = chamado.getArgument(0);
+                return userSaved;
+            });
+            
+            //===== ACT =======
+            var output = userService.updateUser(userId, infosToUpdate);
+
+            //===== ASSERT =======
+
+            //Verifica se o nome as informações de usuarias registradas no banco seriam condizentes com as atualizadas
+            verify(userRepository).save(userArgumentCaptor.capture());
+            var userCaptured = userArgumentCaptor.getValue();
+
+            assertEquals(infosToUpdate.name(), userCaptured.getName());
+            assertEquals(infosToUpdate.email(), userCaptured.getEmail());
+            verify(passwordEncoder).encode(infosToUpdate.password());
+
+            //Verifica se o retorno do metodo condiz com informações atualizadas
+            assertEquals(infosToUpdate.name(), output.name());
+            assertEquals(infosToUpdate.email(), output.email());
+
+            //Verifica se usuario retornado foi o mesmo em que foi solicitado alteração
+            assertEquals(userId, output.id());
+
+            //Verifica se o usuario que sofreu alteração é o mesmo em que foi informado o
+            assertEquals(userId, userCaptured.getId());
+        }
+
+        @Test
+        @DisplayName("Should not update a user when user id don't find")
+        void shouldNotUpdateAUSerWhenUserIdDontFind(){
+            //===== ARRANGE =======
+            var userId = UUID.randomUUID();
+            var infosToUpdate = new UpdateUserDto("Jairo",
+                                                    "jairo@teste.com",
+                                                    "123456789",
+                                                    UserRole.CANDIDATE,
+                                                    true);
+
+            doReturn(Optional.empty()).when(userRepository).findById(userId);
+            
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> userService.updateUser(userId, infosToUpdate));
+
+            //===== ASSERT =======
+
+            //Verifica se a excessao lançada é a correta
+            assertEquals("Usuário não encontrado", response.getMessage());
+            verify(userRepository, never()).save(any(User.class));
+
+        }
+
+    }
+
+
+    @Nested
+    class deleteUser{
+        @Test
+        @DisplayName("Should delete a user succefully")
+        void shouldDeleteAUserSuccefully(){
+            //===== ARRANGE =======
+            var userId = UUID.randomUUID();
+            var user = new User();
+            user.setId(userId);
+            user.setName("pessoaTeste");
+            user.setEmail("pessoa@teste.com");
+
+            doReturn(Optional.of(user)).when(userRepository).findById(userId);
+
+
+            //===== ACT =======
+            userService.deleteUser(userId);
+            
+            //===== ASSERT =======
+
+            //Verifica se o id que seria usado para pesquisa bate com o inserido no metodo
+            verify(userRepository).findById(idCaptor.capture());
+            var idCaptured = idCaptor.getValue();
+            assertEquals(userId, idCaptured);
+
+            //Verica se o metodos foram chamados corretamente e quais valores seriam inseridos
+            verify(verificationCodeService).removeCode(userArgumentCaptor.capture());
+            verify(userRepository).delete(userArgumentCaptor.capture());
+            var usersCaptured = userArgumentCaptor.getAllValues();
+
+
+            //Verifica se usuario inserido como parametro no remove code bate com o existente no banco
+            assertEquals(user, usersCaptured.get(0));
+
+            //Verifica se usuario inserido como parametro no delete user bate com o existente no banco
+            assertEquals(user, usersCaptured.get(1));
+
+        }
+        
+        @Test
+        @DisplayName("Should not delete a user when id don't find")
+        void shouldNotDeleteAUserWhenIdDontFind(){
+            //===== ARRANGE =======
+            var userId = UUID.randomUUID();
+            doReturn(Optional.empty()).when(userRepository).findById(userId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> userService.deleteUser(userId));
+            
+            //===== ASSERT =======
+
+            //Verifica se a mensagem de excessao lançada é a correta
+            assertEquals("Usuário não encontrado", response.getMessage());
+
+            verify(userRepository, never()).delete(any(User.class));
+            verify(verificationCodeService, never()).removeCode(any(User.class));
+
+        }
+
+
+
     }
 }
