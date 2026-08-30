@@ -21,6 +21,7 @@ import com.unisal.processoseletivoapi.vagas.dto.UpdateVaga;
 import com.unisal.processoseletivoapi.vagas.dto.VagaResponse;
 import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
 import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
+import com.unisal.processoseletivoapi.vagas.services.VagaService;
 
 import jakarta.validation.Valid;
 

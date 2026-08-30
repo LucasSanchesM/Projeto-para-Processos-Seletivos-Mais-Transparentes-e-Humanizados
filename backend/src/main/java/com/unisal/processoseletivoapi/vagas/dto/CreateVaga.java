@@ -30,10 +30,6 @@ public record CreateVaga(
     @NotNull(message = "O campo 'companyProfileId' é obrigatório")
     UUID companyProfileId,
 
-    String cidade,
-
-    String estado,
-
     @NotNull(message = "O campo 'categoria' é obrigatório")
     VagaRole categoria,
 
@@ -41,6 +37,12 @@ public record CreateVaga(
     ModalidadeVaga modalidade,
 
     @NotNull(message = "O campo 'nivelExperiencia' é obrigatório")
-    NivelExperiencia nivelExperiencia
+    NivelExperiencia nivelExperiencia,
+
+    @NotNull(message = "O campo 'latitude' é obrigatorio")
+    Double latitude,
+
+    @NotNull(message = "O campo 'longitude' é obrigatorio")
+    Double longitude
 
 ) {}
