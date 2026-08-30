@@ -44,6 +44,7 @@ public class LinkedInOAuthSuccessHandler implements AuthenticationSuccessHandler
             HttpServletResponse response,
             Authentication authentication) throws IOException {
         try {
+
             OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
             if (!"linkedin".equals(oauthToken.getAuthorizedClientRegistrationId())
                     || !(oauthToken.getPrincipal() instanceof OidcUser oidcUser)) {
@@ -59,7 +60,9 @@ public class LinkedInOAuthSuccessHandler implements AuthenticationSuccessHandler
                     .maxAge(token.expiresIn())
                     .sameSite("Lax")
                     .build();
+
             response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+            
             invalidateSession(request);
             response.sendRedirect(frontendUrl + "/dashboard");
         } catch (BusinessException exception) {

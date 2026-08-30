@@ -59,6 +59,14 @@ public class CandidateProfileController {
         return ResponseEntity.ok(candidateProfileService.uploadAvatar(userId, file));
     }
 
+    @PutMapping(value = "/me/resume", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CandidateProfileDto> uploadMyResume(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestPart("file") MultipartFile file) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(candidateProfileService.uploadResume(userId, file));
+    }
+
     @PostMapping("/me/experiences")
     public ResponseEntity<CandidateProfileDto> addExperience(@AuthenticationPrincipal Jwt jwt,
                                                               @Valid @RequestBody CreateExperienceDto dto) {

@@ -22,8 +22,8 @@ import com.unisal.processoseletivoapi.candidate.entity.CandidateProject;
 import com.unisal.processoseletivoapi.candidate.repository.CandidateExperienceRepository;
 import com.unisal.processoseletivoapi.candidate.repository.CandidateProfileRepository;
 import com.unisal.processoseletivoapi.candidate.repository.CandidateProjectRepository;
-import com.unisal.processoseletivoapi.candidate.storage.ProfileImageStorage;
-import com.unisal.processoseletivoapi.candidate.storage.StoredProfileImage;
+import com.unisal.processoseletivoapi.candidate.storage.FileStorage;
+import com.unisal.processoseletivoapi.candidate.storage.StoredFile;
 import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.user.UserRepository;
 import com.unisal.processoseletivoapi.user.entity.User;
@@ -32,23 +32,24 @@ import com.unisal.processoseletivoapi.user.entity.User;
 public class CandidateProfileService {
 
     private static final long MAX_AVATAR_SIZE = 5L * 1024 * 1024;
+    private static final long MAX_RESUME_SIZE = 10L * 1024 * 1024;
 
     private final CandidateProfileRepository candidateProfileRepository;
     private final CandidateExperienceRepository candidateExperienceRepository;
     private final CandidateProjectRepository candidateProjectRepository;
     private final UserRepository userRepository;
-    private final ProfileImageStorage profileImageStorage;
+    private final FileStorage fileStorage;
 
     public CandidateProfileService(CandidateProfileRepository candidateProfileRepository,
             CandidateExperienceRepository candidateExperienceRepository,
             CandidateProjectRepository candidateProjectRepository,
             UserRepository userRepository,
-            ProfileImageStorage profileImageStorage) {
+            FileStorage fileStorage) {
         this.candidateProfileRepository = candidateProfileRepository;
         this.candidateExperienceRepository = candidateExperienceRepository;
         this.candidateProjectRepository = candidateProjectRepository;
         this.userRepository = userRepository;
-        this.profileImageStorage = profileImageStorage;
+        this.fileStorage = fileStorage;
     }
 
     @Transactional
@@ -98,11 +99,11 @@ public class CandidateProfileService {
         byte[] content = readAndValidateAvatar(file);
         ImageFormat format = detectImageFormat(content);
 
-        StoredProfileImage uploaded = profileImageStorage.store(
-                userId,
+        StoredFile uploaded = fileStorage.store(
+                "candidate-avatars/" + userId,
+                UUID.randomUUID() + "." + format.extension(),
                 content,
-                format.contentType(),
-                format.extension());
+                format.contentType());
 
         String previousKey = profile.getProfileImageKey();
         profile.setProfileImageKey(uploaded.key());
@@ -110,10 +111,35 @@ public class CandidateProfileService {
 
         try {
             CandidateProfile saved = candidateProfileRepository.saveAndFlush(profile);
-            profileImageStorage.deleteQuietly(previousKey);
+            fileStorage.deleteQuietly(previousKey);
             return toDto(saved);
         } catch (RuntimeException exception) {
-            profileImageStorage.deleteQuietly(uploaded.key());
+            fileStorage.deleteQuietly(uploaded.key());
+            throw exception;
+        }
+    }
+
+    @Transactional
+    public CandidateProfileDto uploadResume(UUID userId, MultipartFile file) {
+        CandidateProfile profile = findOrCreateProfile(userId);
+        byte[] content = readAndValidateResume(file);
+
+        StoredFile uploaded = fileStorage.store(
+                "candidate-resumes/" + userId,
+                UUID.randomUUID() + ".pdf",
+                content,
+                "application/pdf");
+
+        String previousKey = profile.getResumeKey();
+        profile.setResumeKey(uploaded.key());
+        profile.setResumeUrl(uploaded.url());
+
+        try {
+            CandidateProfile saved = candidateProfileRepository.saveAndFlush(profile);
+            fileStorage.deleteQuietly(previousKey);
+            return toDto(saved);
+        } catch (RuntimeException exception) {
+            fileStorage.deleteQuietly(uploaded.key());
             throw exception;
         }
     }
@@ -237,7 +263,7 @@ public class CandidateProfileService {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "Selecione uma imagem de perfil");
         }
         if (file.getSize() > MAX_AVATAR_SIZE) {
-            throw new BusinessException(HttpStatus.PAYLOAD_TOO_LARGE,
+            throw new BusinessException(HttpStatus.CONTENT_TOO_LARGE,
                     "A imagem deve ter no máximo 5 MB");
         }
         try {
@@ -247,6 +273,32 @@ public class CandidateProfileService {
         } catch (IOException exception) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "Não foi possível ler a imagem enviada");
         }
+    }
+
+    private byte[] readAndValidateResume(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Selecione um arquivo PDF para o currículo");
+        }
+        if (file.getSize() > MAX_RESUME_SIZE) {
+            throw new BusinessException(HttpStatus.CONTENT_TOO_LARGE, "O currículo deve ter no máximo 10 MB");
+        }
+        try {
+            byte[] content = file.getBytes();
+            if (!isPdf(content)) {
+                throw new BusinessException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Formato inválido. O arquivo deve ser um PDF");
+            }
+            return content;
+        } catch (IOException exception) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "Não foi possível ler o arquivo enviado");
+        }
+    }
+
+    private boolean isPdf(byte[] content) {
+        return content.length >= 4
+                && content[0] == (byte) 0x25
+                && content[1] == (byte) 0x50
+                && content[2] == (byte) 0x44
+                && content[3] == (byte) 0x46;
     }
 
     private ImageFormat detectImageFormat(byte[] content) {
@@ -327,6 +379,7 @@ public class CandidateProfileService {
                 profile.getUser().getName(),
                 profile.getUser().getEmail(),
                 profile.getProfileImageUrl(),
+                profile.getResumeUrl(),
                 profile.getHeadline(),
                 profile.getSummary(),
                 profile.getPhone(),

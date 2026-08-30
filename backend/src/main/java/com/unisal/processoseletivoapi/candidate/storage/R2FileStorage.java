@@ -1,16 +1,12 @@
 package com.unisal.processoseletivoapi.candidate.storage;
 
 import java.net.URI;
-import java.util.UUID;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-
 import com.unisal.processoseletivoapi.exception.BusinessException;
-
 import jakarta.annotation.PreDestroy;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -23,9 +19,9 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @Service
-public class R2ProfileImageStorage implements ProfileImageStorage {
+public class R2FileStorage implements FileStorage {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(R2ProfileImageStorage.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(R2FileStorage.class);
 
     private final String endpoint;
     private final String accessKeyId;
@@ -34,7 +30,7 @@ public class R2ProfileImageStorage implements ProfileImageStorage {
     private final String publicBaseUrl;
     private volatile S3Client client;
 
-    public R2ProfileImageStorage(
+    public R2FileStorage(
             @Value("${r2.endpoint:}") String endpoint,
             @Value("${r2.access-key-id:}") String accessKeyId,
             @Value("${r2.secret-access-key:}") String secretAccessKey,
@@ -48,29 +44,27 @@ public class R2ProfileImageStorage implements ProfileImageStorage {
     }
 
     @Override
-    public StoredProfileImage store(UUID userId, byte[] content, String contentType, String extension) {
+    public StoredFile store(String directory, String fileName, byte[] content, String contentType) {
         ensureConfigured();
-        String key = "candidate-avatars/" + userId + "/" + UUID.randomUUID() + "." + extension;
+        
+        String key = directory + "/" + fileName;
 
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(key)
                 .contentType(contentType)
                 .contentLength((long) content.length)
-                .cacheControl("public, max-age=31536000, immutable")
                 .build();
 
         try {
             getClient().putObject(request, RequestBody.fromBytes(content));
-            return new StoredProfileImage(key, publicBaseUrl + "/" + key);
+            return new StoredFile(key, publicBaseUrl + "/" + key);
         } catch (S3Exception exception) {
-            LOGGER.error("Falha ao enviar avatar ao R2: status={}", exception.statusCode());
-            throw new BusinessException(HttpStatus.BAD_GATEWAY,
-                    "Não foi possível armazenar a imagem de perfil");
+            LOGGER.error("Falha ao enviar arquivo ao R2: status={}", exception.statusCode());
+            throw new BusinessException(HttpStatus.BAD_GATEWAY, "Não foi possível armazenar o arquivo");
         } catch (RuntimeException exception) {
-            LOGGER.error("Falha ao enviar avatar ao R2", exception);
-            throw new BusinessException(HttpStatus.BAD_GATEWAY,
-                    "Não foi possível armazenar a imagem de perfil");
+            LOGGER.error("Falha ao enviar arquivo ao R2", exception);
+            throw new BusinessException(HttpStatus.BAD_GATEWAY, "Não foi possível armazenar o arquivo");
         }
     }
 
@@ -82,7 +76,7 @@ public class R2ProfileImageStorage implements ProfileImageStorage {
         try {
             getClient().deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
         } catch (RuntimeException exception) {
-            LOGGER.warn("Não foi possível remover o avatar antigo do R2: key={}", key, exception);
+            LOGGER.warn("Não foi possível remover o arquivo antigo do R2: key={}", key, exception);
         }
     }
 
@@ -110,19 +104,7 @@ public class R2ProfileImageStorage implements ProfileImageStorage {
 
     private void ensureConfigured() {
         if (!isConfigured()) {
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Upload de imagens ainda não foi configurado");
-        }
-        URI endpointUri;
-        try {
-            endpointUri = URI.create(endpoint);
-        } catch (IllegalArgumentException exception) {
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Endpoint do armazenamento de imagens é inválido");
-        }
-        if (!"https".equalsIgnoreCase(endpointUri.getScheme()) || endpointUri.getHost() == null) {
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Endpoint do armazenamento de imagens é inválido");
+            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "Upload de arquivos não foi configurado");
         }
     }
 
