@@ -5,6 +5,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,6 +18,7 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,6 +29,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 
 import com.unisal.processoseletivoapi.auth.dtos.LoginRequestDto;
 import com.unisal.processoseletivoapi.auth.service.AuthService;
+import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.user.UserRepository;
 import com.unisal.processoseletivoapi.user.UserRole;
 import com.unisal.processoseletivoapi.user.entity.User;
@@ -49,19 +54,27 @@ public class AuthServiceTest {
 
     @Nested
     class LoginUser{
-        @Test
-        @DisplayName("should login a user succefully")
-        void shouldLoginAUserSuccefully(){
-            //===== ARRANGE =======
-            var input = new LoginRequestDto("pessoa@teste.com", "1234", UserRole.CANDIDATE);
-            var user = new User();
+
+        private User user;
+        private LoginRequestDto input;
+
+        @BeforeEach
+        void setUp() {
+            //Pra facilitar usarei o mesmo input e usuario no banco, apenas modificando nos testes
+            input = new LoginRequestDto("pessoa@teste.com", "1234", UserRole.CANDIDATE);
+            user = new User();
             user.setId(UUID.randomUUID());
             user.setEmail("pessoa@teste.com");
             user.setPasswordHash("criptografado");
             user.setActive(true);
             user.setRole(UserRole.CANDIDATE.name());
+        }
 
-            doReturn(Optional.of(user)).when(userRepository).findByEmail(user.getEmail());
+        @Test
+        @DisplayName("should login a user succefully")
+        void shouldLoginAUserSuccefully(){
+            //===== ARRANGE =======
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(input.email());
             doReturn(true).when(passwordEncoder).matches(input.password(), user.getPasswordHash());
             var jwtFake = Jwt.withTokenValue("token-fake")
                                 .header("alg", "none")
@@ -76,7 +89,7 @@ public class AuthServiceTest {
 
             //===== ARSSERT =======
 
-            //Verifica se find foi chamado apenas umav e coleta email usado pra pesquisa
+            //Verifica se find foi chamado apenas uma vez e coleta email usado pra pesquisa
             verify(userRepository, times(1)).findByEmail(emailArgumentCaptor.capture());
             //Verifica se password foi chamado corretamente
             verify(passwordEncoder, times(1)).matches( input.password(), user.getPasswordHash());
@@ -87,6 +100,84 @@ public class AuthServiceTest {
 
             //verifica se token seria emitido corretamente
             assertEquals("token-fake", response.token());
+        }
+
+        @Test
+        @DisplayName("should not login when email dont exist")
+        void shouldNotLoginWhenEmailDontExist(){
+
+            //===== ARRANGE =======
+            doReturn(Optional.empty()).when(userRepository).findByEmail(input.email());
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> authService.loginUser(input));
+
+            //===== ASSERT =======
+            //Verifica se a mensagem de excessão lançada é a correta e se o jwt encoder nao foi chamado
+            assertEquals("Email ou senha inválidos", response.getMessage());
+            verify(jwtEncoder, never()).encode(any(JwtEncoderParameters.class));
+
+            //verifica se a senha do usuario nunca foi comparada a inserida
+            verify(passwordEncoder, never()).matches(any(), any());
+        }
+
+        @Test
+        @DisplayName("should not login when password is wrong")
+        void shouldNotLoginWhenPasswordIsWrong(){
+
+            //===== ARRANGE =======
+
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(input.email());
+            doReturn(false).when(passwordEncoder).matches(input.password(), user.getPasswordHash());
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> authService.loginUser(input));
+
+            //===== ASSERT =======
+
+            //Verifica se a mensagem de excessão lançada é a correta e se o jwt encoder nao foi chamado
+            assertEquals("Email ou senha inválidos", response.getMessage());
+            verify(jwtEncoder, never()).encode(any(JwtEncoderParameters.class));
+        }
+
+        @Test
+        @DisplayName("should not login when role dont match")
+        void shouldNotLoginWhenRoleDontMatch(){
+
+            //===== ARRANGE =======
+            user.setRole(UserRole.COMPANY.name());
+
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(input.email());
+            doReturn(true).when(passwordEncoder).matches(input.password(), user.getPasswordHash());
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> authService.loginUser(input));
+
+            //===== ASSERT =======
+
+            //Verifica se a mensagem de excessão lançada é a correta e se o jwt encoder nao foi chamado
+            assertEquals("Esta conta não pertence a este tipo de acesso", response.getMessage());
+            verify(jwtEncoder, never()).encode(any(JwtEncoderParameters.class));
+        }
+
+        @Test
+        @DisplayName("should not login when user isn't activated")
+        void shouldNotLoginWhenUserIsNotActivated(){
+
+            //===== ARRANGE =======
+            user.setActive(false);
+
+            doReturn(Optional.of(user)).when(userRepository).findByEmail(input.email());
+            doReturn(true).when(passwordEncoder).matches(input.password(), user.getPasswordHash());
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> authService.loginUser(input));
+
+            //===== ASSERT =======
+
+            //Verifica se a mensagem de excessão lançada é a correta e se o jwt encoder nao foi chamado
+            assertEquals("Conta não verificada. Verifique seu email para ativar sua conta.", response.getMessage());
+            verify(jwtEncoder, never()).encode(any(JwtEncoderParameters.class));
         }
     }
 }
