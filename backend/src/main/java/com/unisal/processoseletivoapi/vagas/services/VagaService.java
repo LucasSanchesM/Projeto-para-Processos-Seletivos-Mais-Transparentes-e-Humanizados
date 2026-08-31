@@ -141,12 +141,12 @@ public class VagaService {
             vaga.setBeneficios(dto.beneficios());
         }
 
-        if (dto.cidade() != null) {
-            vaga.setCidade(dto.cidade());
+        if (dto.latitude() != null) {
+            vaga.setLatitude(dto.latitude());
         }
 
-        if (dto.estado() != null) {
-            vaga.setEstado(dto.estado());
+        if (dto.longitude() != null) {
+            vaga.setLongitude(dto.longitude());
         }
 
         if (dto.categoria() != null) {
@@ -165,6 +165,11 @@ public class VagaService {
             vaga.setAtiva(dto.ativa());
         }
 
+        if(dto.latitude() != null || dto.longitude() != null){
+            var enderecoNovo = geoCodingService.retornarEndereco(vaga.getLatitude(), vaga.getLongitude());
+            vaga.setCidade(enderecoNovo.cidade());
+            vaga.setEstado(enderecoNovo.estado());
+        }
         var updatedVaga = vagaRepository.save(vaga);
 
         return mapToResponse(updatedVaga);
@@ -198,6 +203,8 @@ public class VagaService {
                 empresa.getLogoUrl(),
                 vaga.getCidade(),
                 vaga.getEstado(),
+                vaga.getLatitude(),
+                vaga.getLongitude(),
                 vaga.getCategoria(),
                 vaga.getModalidade(),
                 vaga.getNivelExperiencia(),

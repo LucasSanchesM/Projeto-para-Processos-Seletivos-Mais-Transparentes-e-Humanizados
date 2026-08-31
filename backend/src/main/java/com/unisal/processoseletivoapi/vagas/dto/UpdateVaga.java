@@ -18,8 +18,8 @@ public record UpdateVaga(
 
     String descricao,
     String beneficios,
-    String cidade,
-    String estado,
+    Double latitude,
+    Double longitude,
     VagaRole categoria,
     ModalidadeVaga modalidade,
     NivelExperiencia nivelExperiencia,

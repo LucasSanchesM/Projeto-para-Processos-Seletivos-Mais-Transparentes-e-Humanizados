@@ -26,6 +26,10 @@ public record VagaResponse(
     String cidade,
     String estado,
 
+    //Localização 2
+    Double latitude,
+    Double longitude,
+
     // Perfil da vaga
     VagaRole categoria,
     ModalidadeVaga modalidade,

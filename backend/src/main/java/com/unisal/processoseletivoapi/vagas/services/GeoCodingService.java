@@ -31,8 +31,13 @@ public class GeoCodingService {
                                                             .queryParam("format", "json")
                                                             .queryParam("zoom", 10)
                                                             .build()).retrieve().body(JsonNode.class);
+
         //pega todas as infos que estão em endereço para tratar
         JsonNode adress = response.get("address");
+        if(adress == null){
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "localização invalida");
+        }
+
         return new EnderecoDto(coletarCidade(adress), coletarEstado(adress));
     }
     
