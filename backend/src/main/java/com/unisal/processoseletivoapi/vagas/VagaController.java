@@ -24,6 +24,7 @@ import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
 import com.unisal.processoseletivoapi.vagas.services.VagaService;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 
 @RestController
 @RequestMapping("/vagas")
@@ -109,4 +110,12 @@ public class VagaController {
 
         return ResponseEntity.noContent().build();
     }
+    //ver vags de acordo com distancia
+    @GetMapping("/proximas")
+    public ResponseEntity<List<VagaResponse>> listarvagasPorKm( @RequestParam @NotNull Double latitude,
+                                                                @RequestParam @NotNull Double longitude,
+                                                                @RequestParam @NotNull Double raioKm) {
+        return ResponseEntity.ok(vagaService.pegarVagasPorRaio(latitude, longitude, raioKm));
+    }
+    
 }
