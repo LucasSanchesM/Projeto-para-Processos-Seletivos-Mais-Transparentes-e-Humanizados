@@ -187,11 +187,10 @@ public class VagaService {
         vagaRepository.delete(vaga);
     }
 
-        public List<VagaResponse> pegarVagasPorRaio(Double latitude, Double longitude, Double raioKm){
-            
-            var listaVagas = vagaRepository.listarVagasPorRaio(latitude, longitude, raioKm);
-            return listaVagas.stream().map(vaga -> mapToResponse(vaga)).toList();
-        }
+    public List<VagaResponse> pegarVagasPorRaio(Double latitude, Double longitude, Double raioKm){    
+        var listaVagas = vagaRepository.listarVagasPorRaio(latitude, longitude, raioKm);
+        return listaVagas.stream().map(vaga -> mapToResponse(vaga)).toList();
+    }
 
 
     private VagaResponse mapToResponse(Vaga vaga) {
