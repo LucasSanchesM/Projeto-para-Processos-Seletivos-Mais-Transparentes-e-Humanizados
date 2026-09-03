@@ -50,11 +50,16 @@ public class CandidateProfile {
     @Column(name = "profile_image_key", length = 512)
     private String profileImageKey;
 
+    @Column(name = "resume_url", length = 2048)
+    private String resumeUrl;
+
+    @Column(name = "resume_key", length = 512)
+    private String resumeKey;
+
     private String institution;
     private String course;
     private Integer currentSemester;
     private Integer expectedGraduationYear;
-
     private String linkedinUrl;
     private String githubUrl;
     private String portfolioUrl;
@@ -164,6 +169,22 @@ public class CandidateProfile {
 
     public void setProfileImageKey(String profileImageKey) {
         this.profileImageKey = profileImageKey;
+    }
+
+    public String getResumeUrl() {
+        return resumeUrl;
+    }
+
+    public void setResumeUrl(String resumeUrl) {
+        this.resumeUrl = resumeUrl;
+    }
+
+    public String getResumeKey() {
+        return resumeKey;
+    }
+
+    public void setResumeKey(String resumeKey) {
+        this.resumeKey = resumeKey;
     }
 
     public String getInstitution() {

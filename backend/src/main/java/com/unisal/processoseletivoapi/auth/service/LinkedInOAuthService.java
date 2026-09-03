@@ -45,7 +45,7 @@ public class LinkedInOAuthService {
                 "O LinkedIn não disponibilizou seu e-mail");
 
         if (!Boolean.TRUE.equals(linkedInUser.getEmailVerified())) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT,
                     "O LinkedIn não confirmou que este e-mail está verificado");
         }
 
@@ -84,7 +84,7 @@ public class LinkedInOAuthService {
 
     private String requiredClaim(String value, String message) {
         if (value == null || value.isBlank()) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, message);
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, message);
         }
         return value.trim();
     }

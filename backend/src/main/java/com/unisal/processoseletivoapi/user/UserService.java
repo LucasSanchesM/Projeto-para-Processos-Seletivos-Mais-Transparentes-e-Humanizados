@@ -40,7 +40,7 @@ public class UserService {
         var existingUser = userRepository.findByEmail(dto.email());
 
         if (existingUser.isPresent()) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "E-mail já está em uso");
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, "E-mail já está em uso");
         }
 
         UserRole role = dto.role() != null ? dto.role() : UserRole.CANDIDATE;
@@ -49,7 +49,7 @@ public class UserService {
             throw new BusinessException(HttpStatus.FORBIDDEN, "Não é permitido se cadastrar como ADMIN diretamente");
         }
         if (role == UserRole.COMPANY) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT,
                     "O cadastro empresarial deve ser concluído pelo fluxo de empresas");
         }
 
@@ -78,20 +78,20 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         if (user.getActive()) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Conta já está ativa");
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, "Conta já está ativa");
         }
 
         var verificationCode = verificationCodeService.getCode(user)
-                .orElseThrow(() -> new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
+                .orElseThrow(() -> new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT,
                         "Nenhum código de verificação pendente"));
 
         if (verificationCode.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT,
                     "Código de verificação expirado. Solicite um novo código.");
         }
 
         if (!verificationCode.getCode().equals(code)) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Código de verificação inválido");
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, "Código de verificação inválido");
         }
 
         user.setActive(true);
@@ -105,10 +105,10 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
 
         if (user.getActive()) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "Conta já está ativa");
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, "Conta já está ativa");
         }
         if (verificationCodeService.isRateLimited(user)) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY,
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT,
                     "Código de verificação já enviado no último minuto");
         }
 
@@ -143,7 +143,7 @@ public class UserService {
 
         if (dto.email() != null && !dto.email().isBlank()) {
             if (!user.getEmail().equals(dto.email()) && userRepository.existsByEmail(dto.email())) {
-                throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "E-mail já está em uso");
+                throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, "E-mail já está em uso");
             }
             user.setEmail(dto.email());
         }

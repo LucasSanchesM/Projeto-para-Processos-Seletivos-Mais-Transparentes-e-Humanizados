@@ -48,10 +48,11 @@ public class CompanyRegistrationService {
         String cnpj = dto.cnpj().replaceAll("\\D", "");
 
         if (userRepository.existsByEmail(email)) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "E-mail já está em uso");
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, "E-mail já está cadastrado");
         }
+        
         if (companyProfileRepository.existsByCnpj(cnpj)) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "CNPJ já está cadastrado");
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, "CNPJ já está cadastrado");
         }
 
         User user = new User();
@@ -91,5 +92,4 @@ public class CompanyRegistrationService {
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
-    
 }

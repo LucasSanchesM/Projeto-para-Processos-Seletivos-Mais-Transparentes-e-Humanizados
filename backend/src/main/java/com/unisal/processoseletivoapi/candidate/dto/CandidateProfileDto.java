@@ -10,6 +10,7 @@ public record CandidateProfileDto(
     String userName,
     String userEmail,
     String profileImageUrl,
+    String resumeUrl,
     String headline,
     String summary,
     String phone,
