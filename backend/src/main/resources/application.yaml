@@ -10,9 +10,9 @@ spring:
   config:
     import: "optional:file:./.env[.properties]"
   datasource:
-    url: jdbc:postgresql://localhost:5433/bancoDeDados
-    username: user
-    password: "1234"
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
   servlet:
     multipart:
@@ -26,10 +26,13 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: admin
-    password: "1234"
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING_RABBITMQ_PORT}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
+    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST}
+    ssl:
+      enabled: ${SPRING_RABBITMQ_SSL_ENABLED}
     listener:
       simple:
         default-requeue-rejected: false
