@@ -1,4 +1,4 @@
-package com.unisal.processoseletivoapi.vagas;
+package com.unisal.processoseletivoapi.vagas.services;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -11,6 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.unisal.processoseletivoapi.company.entity.CompanyProfile;
 import com.unisal.processoseletivoapi.company.repository.CompanyProfileRepository;
 import com.unisal.processoseletivoapi.exception.BusinessException;
+import com.unisal.processoseletivoapi.vagas.VagaRepository;
+import com.unisal.processoseletivoapi.vagas.VagaRole;
+import com.unisal.processoseletivoapi.vagas.VagaSpecification;
 import com.unisal.processoseletivoapi.vagas.dto.CreateVaga;
 import com.unisal.processoseletivoapi.vagas.dto.UpdateVaga;
 import com.unisal.processoseletivoapi.vagas.dto.VagaResponse;
@@ -23,11 +26,15 @@ public class VagaService {
 
     private final VagaRepository vagaRepository;
     private final CompanyProfileRepository companyProfileRepository;
+    private final GeoCodingService geoCodingService;
 
-    public VagaService(VagaRepository vagaRepository,
-                       CompanyProfileRepository companyProfileRepository) {
+    
+
+    public VagaService(VagaRepository vagaRepository, CompanyProfileRepository companyProfileRepository,
+            GeoCodingService geoCodingService) {
         this.vagaRepository = vagaRepository;
         this.companyProfileRepository = companyProfileRepository;
+        this.geoCodingService = geoCodingService;
     }
 
     @Transactional
@@ -39,14 +46,18 @@ public class VagaService {
                         "Empresa não encontrada com o id: " + dto.companyProfileId()
                 ));
 
+        var dtoAdress = geoCodingService.retornarEndereco(dto.latitude(), dto.longitude());
+        
         var vaga = new Vaga();
         vaga.setTitulo(dto.titulo());
         vaga.setSalario(dto.salario());
         vaga.setDescricao(dto.descricao());
         vaga.setBeneficios(dto.beneficios());
         vaga.setEmpresa(empresa);
-        vaga.setCidade(dto.cidade());
-        vaga.setEstado(dto.estado());
+        vaga.setCidade(dtoAdress.cidade());
+        vaga.setEstado(dtoAdress.estado());
+        vaga.setLongitude(dto.longitude());
+        vaga.setLatitude(dto.latitude());
         vaga.setCategoria(dto.categoria());
         vaga.setModalidade(dto.modalidade());
         vaga.setNivelExperiencia(dto.nivelExperiencia());
@@ -130,12 +141,12 @@ public class VagaService {
             vaga.setBeneficios(dto.beneficios());
         }
 
-        if (dto.cidade() != null) {
-            vaga.setCidade(dto.cidade());
+        if (dto.latitude() != null) {
+            vaga.setLatitude(dto.latitude());
         }
 
-        if (dto.estado() != null) {
-            vaga.setEstado(dto.estado());
+        if (dto.longitude() != null) {
+            vaga.setLongitude(dto.longitude());
         }
 
         if (dto.categoria() != null) {
@@ -154,6 +165,11 @@ public class VagaService {
             vaga.setAtiva(dto.ativa());
         }
 
+        if(dto.latitude() != null || dto.longitude() != null){
+            var enderecoNovo = geoCodingService.retornarEndereco(vaga.getLatitude(), vaga.getLongitude());
+            vaga.setCidade(enderecoNovo.cidade());
+            vaga.setEstado(enderecoNovo.estado());
+        }
         var updatedVaga = vagaRepository.save(vaga);
 
         return mapToResponse(updatedVaga);
@@ -171,6 +187,12 @@ public class VagaService {
         vagaRepository.delete(vaga);
     }
 
+    public List<VagaResponse> pegarVagasPorRaio(Double latitude, Double longitude, Double raioKm){    
+        var listaVagas = vagaRepository.listarVagasPorRaio(latitude, longitude, raioKm);
+        return listaVagas.stream().map(vaga -> mapToResponse(vaga)).toList();
+    }
+
+
     private VagaResponse mapToResponse(Vaga vaga) {
 
         CompanyProfile empresa = vaga.getEmpresa();
@@ -187,6 +209,8 @@ public class VagaService {
                 empresa.getLogoUrl(),
                 vaga.getCidade(),
                 vaga.getEstado(),
+                vaga.getLatitude(),
+                vaga.getLongitude(),
                 vaga.getCategoria(),
                 vaga.getModalidade(),
                 vaga.getNivelExperiencia(),
