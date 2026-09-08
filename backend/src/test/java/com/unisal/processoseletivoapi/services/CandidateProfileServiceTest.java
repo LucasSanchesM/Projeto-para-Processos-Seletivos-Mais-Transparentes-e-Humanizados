@@ -6,6 +6,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,15 +17,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.unisal.processoseletivoapi.candidate.dto.UpdateCandidateProfileDto;
 import com.unisal.processoseletivoapi.candidate.entity.CandidateExperience;
@@ -34,6 +37,7 @@ import com.unisal.processoseletivoapi.candidate.repository.CandidateProfileRepos
 import com.unisal.processoseletivoapi.candidate.repository.CandidateProjectRepository;
 import com.unisal.processoseletivoapi.candidate.service.CandidateProfileService;
 import com.unisal.processoseletivoapi.candidate.storage.FileStorage;
+import com.unisal.processoseletivoapi.candidate.storage.StoredFile;
 import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.user.UserRepository;
 import com.unisal.processoseletivoapi.user.entity.User;
@@ -58,7 +62,10 @@ public class CandidateProfileServiceTest {
     private ArgumentCaptor<UUID> uuidArgumentCaptor;
 
     @Captor
-    ArgumentCaptor<CandidateProfile> profileArgumentCaptor;
+    private ArgumentCaptor<CandidateProfile> profileArgumentCaptor;
+
+    @Captor
+    private ArgumentCaptor<String> keyImagArgumentCaptor;
 
     private UUID userId;
     private User user;
@@ -460,4 +467,395 @@ public class CandidateProfileServiceTest {
             verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
         }
     }
+
+
+    @Nested
+    class uploadAvatar{
+
+        private MockMultipartFile file;
+        private StoredFile storedFile;
+
+        @BeforeEach 
+        void setUp(){
+            //multipart file utiliza nos testes
+            var bytesPng = new byte[]{
+                (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0, 0, 0, 0
+            };
+            file = new MockMultipartFile("file", "avatar.png", "image/png", bytesPng);
+
+            storedFile = new StoredFile("candidate-avatars/" + userId + "/novo-avatar.png",
+            "https://s3.amazonaws.com/bucket/novo-avatar.png");
+        }
+
+        @Test
+        @DisplayName("Should upload a avatar succefully when profile already exist")
+        void shouldUploadAAvatarSuccefullyAlredyExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            //Variaveis usada para comparação futura
+            String keyBeforeUpdate = profile.getProfileImageKey();
+            String urlBeforeUpdate = profile.getProfileImageUrl();
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+            when(candidateProfileRepository.saveAndFlush(any(CandidateProfile.class))).thenAnswer(chamado ->{
+                var profileSaved = chamado.getArgument(0);
+                return profileSaved;
+            });
+            
+            //no original possuo uma interface FileStorage que será usada como contrato para o serviço de armazenamento usar (hexagonal), por padrão o spring detecta
+            //qual classe é compativel e injeta na service (como so tem uma nao há nenhuma configuração adicional), como foi mockado o file storage preciso
+            //sinalizar ao teste o que vai ter de retorno, nesse caso tenho valores ficticios no meu stored file
+            doReturn(storedFile).when(fileStorage).store( eq("candidate-avatars/" + inputId),
+                                                            anyString(),
+                                                            any(byte[].class),
+                                                            eq("image/png"));
+
+
+            //===== ACT =======
+            var response = candidateProfileService.uploadAvatar(inputId, file);
+            
+
+            //===== ASSERT =======
+
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //verifica se saveandflush foi chamado e prepara pra pegar valor que seria salvo
+            verify(candidateProfileRepository, times(1)).saveAndFlush(profileArgumentCaptor.capture());
+            var profileCaptured = profileArgumentCaptor.getValue();
+
+            //Verifica que o user do profile retornado é o correto
+            assertEquals(inputId, response.userId());
+            
+            //Verifica que o profile retornado é o correto
+            assertEquals(profileCaptured.getId(), response.id());
+
+
+            //Verica que credenciail nova de imagem no banco bate com retornado
+            assertEquals(profileCaptured.getProfileImageUrl(), response.profileImageUrl());
+
+            //Verfica que credenciais referentes a imagem foram atualizados com sucesso
+            assertNotEquals(keyBeforeUpdate, profile.getProfileImageKey());
+            assertNotEquals(urlBeforeUpdate, profile.getProfileImageUrl());
+
+            //verifica que imagem antiga foi deletada
+            verify(fileStorage, times(1)).deleteQuietly(keyBeforeUpdate);
+
+        }
+
+        @Test
+        @DisplayName("Should upload a avatar succefully when profile don't exist")
+        void shouldUploadAAvatarSuccefullyDontExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
+            when(candidateProfileRepository.saveAndFlush(any(CandidateProfile.class))).thenAnswer(chamado ->{
+                var profileSaved = chamado.getArgument(0);
+                return profileSaved;
+            });
+            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado ->{
+                var profileSaved = chamado.getArgument(0);
+                return profileSaved;
+            });
+
+            doReturn(storedFile).when(fileStorage).store( eq("candidate-avatars/" + inputId),
+                                                            anyString(),
+                                                            any(byte[].class),
+                                                            eq("image/png"));
+
+
+            //===== ACT =======
+            var response = candidateProfileService.uploadAvatar(inputId, file);
+            
+
+            //===== ASSERT =======
+
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //Verifica se foi feita a procura de usuario apos nao encontrar profile
+            verify(userRepository, times(1)).findById(any(UUID.class));
+
+            //Verifica se save (criação de inicial de profile) foi chamado (TALVEZ ALTERE DEPOIS)
+            verify(candidateProfileRepository, times(1)).save(profileArgumentCaptor.capture());
+
+            //verifica se saveandflush foi chamado e prepara pra pegar valor que seria salvo
+            verify(candidateProfileRepository, times(1)).saveAndFlush(profileArgumentCaptor.capture());
+
+            //Coleta valores capturados respectivamente no: save e no save and flush
+            var listProfileCaptured = profileArgumentCaptor.getAllValues();
+
+            var profileCapturedNormal = listProfileCaptured.get(0);
+            var profileCapturedFlush = listProfileCaptured.get(1);
+
+            //Verifica que profile salvo possui id correto
+            assertEquals(inputId, profileCapturedNormal.getUser().getId());
+
+            //Verifica que o user do profile retornado é o correto
+            assertEquals(inputId, response.userId());
+            
+            //Verifica que o profile retornado é o correto (capturado no flush)
+            assertEquals(profileCapturedFlush.getId(), response.id());
+
+
+            //Verica que credenciail nova de imagem no banco bate com retornado(flush)
+            assertEquals(profileCapturedFlush.getProfileImageUrl(), response.profileImageUrl());
+
+            //Verfica que credenciais de imagem foram inseridas corretamente no banco
+            assertNotNull(profileCapturedFlush.getProfileImageKey());
+            assertNotNull(profileCapturedFlush.getProfileImageUrl());
+
+            //Assegura que nao nenhuma imagem vai ser deletada (ja que variavel naquele instante estaria vazia)
+            verify(fileStorage, times(1)).deleteQuietly(keyImagArgumentCaptor.capture());
+            assertNull(keyImagArgumentCaptor.getValue());
+
+        }
+    
+        @Test
+        @DisplayName("Should not upload a avatar when user don't exist")
+        void shouldNotUploadAAvatarWhenUserDontExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.empty()).when(userRepository).findById(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.uploadAvatar(inputId, file));
+            
+
+            //===== ASSERT =======
+
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+            //Verifica se foi feita a procura de usuario apos nao encontrar profile
+            verify(userRepository, times(1)).findById(any(UUID.class));
+
+            assertEquals("Usuário não encontrado", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(profileArgumentCaptor.capture());
+            verify(candidateProfileRepository, never()).saveAndFlush(profileArgumentCaptor.capture());
+
+        }
+        
+        @Test
+        @DisplayName("Should not upload a avatar when profile don't exist and userRole isn't candidate")
+        void shouldNotUploadAAvatarWhenProfileDontExistAndUserRoleIsntCandidate(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            user.setRole("COMPANY");
+
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.uploadAvatar(inputId, file));
+            
+
+            //===== ASSERT =======
+
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+            //Verifica se foi feita a procura de usuario apos nao encontrar profile
+            verify(userRepository, times(1)).findById(any(UUID.class));
+
+            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(profileArgumentCaptor.capture());
+            verify(candidateProfileRepository, never()).saveAndFlush(profileArgumentCaptor.capture());
+
+        }
+
+        @Test
+        @DisplayName("Should not upload a avatar when profile exist but userRole isn't candidate")
+        void shouldNotUploadAAvatarWhenProfileExistButUserRoleIsntCandidate(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            user.setRole("COMPANY");
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.uploadAvatar(inputId, file));
+            
+
+            //===== ASSERT =======
+
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //Verifica se foi nao feita a procura de usuario apos encontrar profile
+            verify(userRepository, never()).findById(any(UUID.class));
+
+            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(profileArgumentCaptor.capture());
+            verify(candidateProfileRepository, never()).saveAndFlush(profileArgumentCaptor.capture());
+
+        }
+
+        @Test
+        @DisplayName("Should not upload a avatar when file is null")
+        void shouldNotUploadAAvatarWhenFileIsNull(){
+            //===== ARRANGE =======
+            var inputId = userId;
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.uploadAvatar(inputId, null));
+            
+
+            //===== ASSERT =======
+            
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //Verifica se foi nao feita a procura de usuario apos encontrar profile
+            verify(userRepository, never()).findById(any(UUID.class));
+
+            assertEquals("Selecione uma imagem de perfil", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(profileArgumentCaptor.capture());
+            verify(candidateProfileRepository, never()).saveAndFlush(profileArgumentCaptor.capture());
+
+        }
+
+        @Test
+        @DisplayName("Should not upload a avatar when file is empty")
+        void shouldNotUploadAAvatarWhenFileIsEmpty(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var emptyFile = new MockMultipartFile("file", "avatar.png", "image/png", new byte[0]);
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.uploadAvatar(inputId, emptyFile));
+            
+
+            //===== ASSERT =======
+            
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //Verifica se foi nao feita a procura de usuario apos encontrar profile
+            verify(userRepository, never()).findById(any(UUID.class));
+
+            assertEquals("Selecione uma imagem de perfil", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(profileArgumentCaptor.capture());
+            verify(candidateProfileRepository, never()).saveAndFlush(profileArgumentCaptor.capture());
+
+        }
+
+        @Test
+        @DisplayName("Should not upload a avatar when file too large")
+        void shouldNotUploadAAvatarWhenFileIsTooLarge(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var largeFile = mock(MultipartFile.class);
+
+            doReturn(false).when(largeFile).isEmpty();
+            doReturn(6l * 1024 *1024).when(largeFile).getSize();
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.uploadAvatar(inputId, largeFile));
+            
+
+            //===== ASSERT =======
+            
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //Verifica se foi nao feita a procura de usuario apos encontrar profile
+            verify(userRepository, never()).findById(any(UUID.class));
+
+            assertEquals("A imagem deve ter no máximo 5 MB", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(profileArgumentCaptor.capture());
+            verify(candidateProfileRepository, never()).saveAndFlush(profileArgumentCaptor.capture());
+
+        }
+
+        @Test
+        @DisplayName("Should not upload a avatar when image format is invalid")
+        void shouldNotUploadAAvatarWhenImageFormatIsInvalid(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var invalidFile = new MockMultipartFile("file", "avatar.png", "image/png", "estaéumafileinvalida".getBytes());
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.uploadAvatar(inputId, invalidFile));
+            
+
+            //===== ASSERT =======
+            
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //Verifica se foi nao feita a procura de usuario apos encontrar profile
+            verify(userRepository, never()).findById(any(UUID.class));
+
+            assertEquals("Formato inválido. Envie uma imagem PNG, JPEG ou WebP", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(profileArgumentCaptor.capture());
+            verify(candidateProfileRepository, never()).saveAndFlush(profileArgumentCaptor.capture());
+
+        }
+
+        @Test
+        @DisplayName("Should Rollback when saveandflush fail")
+        void shouldRollBackWhenSaveAndFlushFail(){
+            //===== ARRANGE =======
+            var inputId = userId;
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+            doThrow(new RuntimeException("Erro exemplo no banco")).when(candidateProfileRepository).saveAndFlush(any(CandidateProfile.class));
+
+            doReturn(storedFile).when(fileStorage).store( eq("candidate-avatars/" + inputId),
+                                                            anyString(),
+                                                            any(byte[].class),
+                                                            eq("image/png"));
+
+
+            //===== ACT =======
+            var response = assertThrows(RuntimeException.class, () -> candidateProfileService.uploadAvatar(inputId, file));
+            
+
+            //===== ASSERT =======
+
+            assertEquals("Erro exemplo no banco", response.getMessage());
+
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //verifica se saveandflush foi chamado e prepara pra pegar valor que seria salvo
+            verify(candidateProfileRepository, times(1)).saveAndFlush(profileArgumentCaptor.capture());
+            var profileCaptured = profileArgumentCaptor.getValue();
+
+
+            //verifica que metodo para deletar nova imagem do banco (do servico de armazenamento)foi chamado
+            verify(fileStorage, times(1)).deleteQuietly(keyImagArgumentCaptor.capture());
+            var imageKey = keyImagArgumentCaptor.getValue();
+
+            //Verifica que imagem chamado pra deleção é a mesma que houve falha no banco
+            assertEquals(profileCaptured.getProfileImageKey(), imageKey);
+
+        }
+    }
+
 }
