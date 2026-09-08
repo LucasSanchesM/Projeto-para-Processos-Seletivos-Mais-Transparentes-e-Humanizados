@@ -19,11 +19,16 @@ import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
@@ -66,6 +71,9 @@ public class CandidateProfileServiceTest {
 
     @Captor
     private ArgumentCaptor<String> keyImagArgumentCaptor;
+
+    @Captor
+    private ArgumentCaptor<String> keyResumeArgumentCaptor;
 
     private UUID userId;
     private User user;
@@ -858,4 +866,389 @@ public class CandidateProfileServiceTest {
         }
     }
 
+    @Nested
+    class uploadResume{
+
+        private MockMultipartFile file;
+        private StoredFile storedFile;
+
+        @BeforeEach 
+        void setUp(){
+            //multipart file utiliza nos testes
+            var bytesPdf = new byte[]{
+                (byte) 0x25, 0x50, 0x44, 0x46,
+                0x2D, 0x31, 0x2E, 0x34,
+                0x0A, 0x0A, 0x0A, 0x0A
+            };
+            file = new MockMultipartFile("file", "resume.pdf", "application/pdf", bytesPdf);
+
+            storedFile = new StoredFile("candidate-resumes/" + userId + "/novo-resume.pdf",
+            "https://s3.amazonaws.com/bucket/novo-resume.pdf");
+        }
+
+        @Test
+        @DisplayName("Should upload a resume successfully when profile already exist")
+        void shouldUploadAResumeSuccessfullyAlredyExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            //Variaveis usada para comparação futura
+            String keyBeforeUpdate = profile.getResumeKey();
+            String urlBeforeUpdate = profile.getResumeUrl();
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+            when(candidateProfileRepository.saveAndFlush(any(CandidateProfile.class))).thenAnswer(chamado ->{
+                var profileSaved = chamado.getArgument(0);
+                return profileSaved;
+            });
+            
+            doReturn(storedFile).when(fileStorage).store( eq("candidate-resumes/" + inputId),
+                                                            anyString(),
+                                                            any(byte[].class),
+                                                            eq("application/pdf"));
+
+
+            //===== ACT =======
+            var response = candidateProfileService.uploadResume(inputId, file);
+            
+
+            //===== ASSERT =======
+
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //verifica se saveandflush foi chamado e prepara pra pegar valor que seria salvo
+            verify(candidateProfileRepository, times(1)).saveAndFlush(profileArgumentCaptor.capture());
+            var profileCaptured = profileArgumentCaptor.getValue();
+
+            //Verifica que o user do profile retornado é o correto
+            assertEquals(inputId, response.userId());
+            
+            //Verifica que o profile retornado é o correto
+            assertEquals(profileCaptured.getId(), response.id());
+
+
+            //Verica que credenciail nova de imagem no banco bate com retornado
+            assertEquals(profileCaptured.getResumeUrl(), response.resumeUrl());
+
+            //Verfica que credenciais referentes a imagem foram atualizados com sucesso
+            assertNotEquals(keyBeforeUpdate, profile.getResumeKey());
+            assertNotEquals(urlBeforeUpdate, profile.getResumeUrl());
+
+            //verifica que imagem antiga foi deletada
+            verify(fileStorage, times(1)).deleteQuietly(keyBeforeUpdate);
+
+        }
+
+        @Test
+        @DisplayName("Should upload a resume succefully when profile don't exist")
+        void shouldUploadAResumeSuccefullyDontExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
+            when(candidateProfileRepository.saveAndFlush(any(CandidateProfile.class))).thenAnswer(chamado ->{
+                var profileSaved = chamado.getArgument(0);
+                return profileSaved;
+            });
+            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado ->{
+                var profileSaved = chamado.getArgument(0);
+                return profileSaved;
+            });
+
+            doReturn(storedFile).when(fileStorage).store( eq("candidate-resumes/" + inputId),
+                                                            anyString(),
+                                                            any(byte[].class),
+                                                            eq("application/pdf"));
+
+
+            //===== ACT =======
+            var response = candidateProfileService.uploadResume(inputId, file);
+            
+            //===== ASSERT =======
+
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //Verifica se foi feita a procura de usuario apos nao encontrar profile
+            verify(userRepository, times(1)).findById(any(UUID.class));
+
+            //Verifica se save (criação de inicial de profile) foi chamado (TALVEZ ALTERE DEPOIS)
+            verify(candidateProfileRepository, times(1)).save(profileArgumentCaptor.capture());
+
+            //verifica se saveandflush foi chamado e prepara pra pegar valor que seria salvo
+            verify(candidateProfileRepository, times(1)).saveAndFlush(profileArgumentCaptor.capture());
+
+            //Coleta valores capturados respectivamente no: save e no save and flush
+            var listProfileCaptured = profileArgumentCaptor.getAllValues();
+
+            var profileCapturedNormal = listProfileCaptured.get(0);
+            var profileCapturedFlush = listProfileCaptured.get(1);
+
+            //Verifica que profile salvo possui id correto
+            assertEquals(inputId, profileCapturedNormal.getUser().getId());
+
+            //Verifica que o user do profile retornado é o correto
+            assertEquals(inputId, response.userId());
+            
+            //Verifica que o profile retornado é o correto (capturado no flush)
+            assertEquals(profileCapturedFlush.getId(), response.id());
+
+
+            //Verica que credenciail nova de curriculo no banco bate com retornado(flush)
+            assertEquals(profileCapturedFlush.getResumeUrl(), response.resumeUrl());
+
+            //Verfica que credenciais de curriculo foram inseridas corretamente no banco
+            assertNotNull(profileCapturedFlush.getResumeKey());
+            assertNotNull(profileCapturedFlush.getResumeUrl());
+
+            //Assegura que nao nenhum pdf/curriculo vai ser deletado (ja que variavel naquele instante estaria vazia)
+            verify(fileStorage, times(1)).deleteQuietly(keyResumeArgumentCaptor.capture());
+            assertNull(keyResumeArgumentCaptor.getValue());
+
+        }
+    
+        @Test
+        @DisplayName("Should not upload a resume when user don't exist")
+        void shouldNotUploadAResumeWhenUserDontExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.empty()).when(userRepository).findById(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.uploadResume(inputId, file));
+            
+
+            //===== ASSERT =======
+
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+            //Verifica se foi feita a procura de usuario apos nao encontrar profile
+            verify(userRepository, times(1)).findById(any(UUID.class));
+
+            assertEquals("Usuário não encontrado", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+            verify(candidateProfileRepository, never()).saveAndFlush(any(CandidateProfile.class));
+
+        }
+        
+        @Test
+        @DisplayName("Should not upload a resume when profile don't exist and userRole isn't candidate")
+        void shouldNotUploadAResumeWhenProfileDontExistAndUserRoleIsntCandidate(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            user.setRole("COMPANY");
+
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.uploadResume(inputId, file));
+            
+
+            //===== ASSERT =======
+
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+            //Verifica se foi feita a procura de usuario apos nao encontrar profile
+            verify(userRepository, times(1)).findById(any(UUID.class));
+
+            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+            verify(candidateProfileRepository, never()).saveAndFlush(any(CandidateProfile.class));
+
+        }
+
+        @Test
+        @DisplayName("Should not upload a resume when profile exist but userRole isn't candidate")
+        void shouldNotUploadAResumeWhenProfileExistButUserRoleIsntCandidate(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            user.setRole("COMPANY");
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.uploadResume(inputId, file));
+            
+
+            //===== ASSERT =======
+
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //Verifica se foi nao feita a procura de usuario apos encontrar profile
+            verify(userRepository, never()).findById(any(UUID.class));
+
+            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+            verify(candidateProfileRepository, never()).saveAndFlush(any(CandidateProfile.class));
+
+        }
+
+        @Test
+        @DisplayName("Should not upload a resume when file is null")
+        void shouldNotUploadAResumeWhenFileIsNull(){
+            //===== ARRANGE =======
+            var inputId = userId;
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.uploadResume(inputId, null));
+            
+
+            //===== ASSERT =======
+            
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //Verifica se foi nao feita a procura de usuario apos encontrar profile
+            verify(userRepository, never()).findById(any(UUID.class));
+
+            assertEquals("Selecione um arquivo PDF para o currículo", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+            verify(candidateProfileRepository, never()).saveAndFlush(any(CandidateProfile.class));
+
+        }
+
+        @Test
+        @DisplayName("Should not upload a resume when file is empty")
+        void shouldNotUploadAResumeWhenFileIsEmpty(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var emptyFile = new MockMultipartFile("file", "avatar.png", "image/png", new byte[0]);
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.uploadResume(inputId, emptyFile));
+            
+
+            //===== ASSERT =======
+            
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //Verifica se foi nao feita a procura de usuario apos encontrar profile
+            verify(userRepository, never()).findById(any(UUID.class));
+
+            assertEquals("Selecione um arquivo PDF para o currículo", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+            verify(candidateProfileRepository, never()).saveAndFlush(any(CandidateProfile.class));
+
+        }
+
+        @Test
+        @DisplayName("Should not upload a resume when file too large")
+        void shouldNotUploadAResumeWhenFileIsTooLarge(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var largeFile = mock(MultipartFile.class);
+
+            doReturn(false).when(largeFile).isEmpty();
+            doReturn(11l * 1024 *1024).when(largeFile).getSize();
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.uploadResume(inputId, largeFile));
+            
+
+            //===== ASSERT =======
+            
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //Verifica se foi nao feita a procura de usuario apos encontrar profile
+            verify(userRepository, never()).findById(any(UUID.class));
+
+            assertEquals("O currículo deve ter no máximo 10 MB", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+            verify(candidateProfileRepository, never()).saveAndFlush(any(CandidateProfile.class));
+
+        }
+
+        @Test
+        @DisplayName("Should not upload a resume when file format is invalid")
+        void shouldNotUploadAResumeWhenFileFormatIsInvalid(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var invalidFile = new MockMultipartFile("file", "avatar.png", "image/png", "estaéumafileinvalida".getBytes());
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.uploadResume(inputId, invalidFile));
+            
+
+            //===== ASSERT =======
+            
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //Verifica se foi nao feita a procura de usuario apos encontrar profile
+            verify(userRepository, never()).findById(any(UUID.class));
+
+            assertEquals("Formato inválido. O arquivo deve ser um PDF", response.getMessage());
+
+            //Assegura que nenhuma operação foi feita no banco
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+            verify(candidateProfileRepository, never()).saveAndFlush(any(CandidateProfile.class));
+
+        }
+
+        @Test
+        @DisplayName("Should Rollback when saveandflush resume fail")
+        void shouldRollBackWhenSaveAndFlushFail(){
+            //===== ARRANGE =======
+            var inputId = userId;
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+            doThrow(new RuntimeException("Erro exemplo no banco")).when(candidateProfileRepository).saveAndFlush(any(CandidateProfile.class));
+
+            doReturn(storedFile).when(fileStorage).store( eq("candidate-resumes/" + inputId),
+                                                            anyString(),
+                                                            any(byte[].class),
+                                                            eq("application/pdf"));
+
+
+            //===== ACT =======
+            var response = assertThrows(RuntimeException.class, () -> candidateProfileService.uploadResume(inputId, file));
+            
+
+            //===== ASSERT =======
+
+            assertEquals("Erro exemplo no banco", response.getMessage());
+
+            //Verifica se foi feita a procura de perfil por userId
+            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
+
+            //verifica se saveandflush foi chamado e prepara pra pegar valor que seria salvo
+            verify(candidateProfileRepository, times(1)).saveAndFlush(profileArgumentCaptor.capture());
+            var profileCaptured = profileArgumentCaptor.getValue();
+
+
+            //verifica que metodo para deletar nova imagem do banco (do servico de armazenamento)foi chamado
+            verify(fileStorage, times(1)).deleteQuietly(keyResumeArgumentCaptor.capture());
+            var resumeKey = keyResumeArgumentCaptor.getValue();
+
+            //Verifica que imagem chamado pra deleção é a mesma que houve falha no banco
+            assertEquals(profileCaptured.getResumeKey(), resumeKey);
+
+        }
+    }
 }
