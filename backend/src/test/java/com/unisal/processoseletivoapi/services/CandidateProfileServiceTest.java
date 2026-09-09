@@ -1,5 +1,6 @@
 package com.unisal.processoseletivoapi.services;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -33,6 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.unisal.processoseletivoapi.candidate.dto.CreateExperienceDto;
 import com.unisal.processoseletivoapi.candidate.dto.UpdateCandidateProfileDto;
 import com.unisal.processoseletivoapi.candidate.entity.CandidateExperience;
 import com.unisal.processoseletivoapi.candidate.entity.CandidateProfile;
@@ -1251,4 +1253,196 @@ public class CandidateProfileServiceTest {
 
         }
     }
+
+    @Nested
+    class addExperience{
+
+        private CreateExperienceDto inputDto;
+
+        @BeforeEach
+        void setUp(){
+            //Dto de input usado nos testes
+            inputDto = new CreateExperienceDto(
+                                    "Tech Solutions",
+                                    "Desenvolvedor Backend Junior",
+                                    "Responsável pelo desenvolvimento e manutenção de APIs REST utilizando Spring Boot",
+                                    LocalDate.of(2023, 3, 1),
+                                    null,
+                                    true);
+        }
+
+        @Test
+        @DisplayName("Should add experience sucessfully when profile already exist")
+        void shouldAddExperienceSucessfullyWhenProfileAlreadyExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado ->{
+                return chamado.getArgument(0);
+            });
+            
+            //===== ACT =======
+            var response = candidateProfileService.addExperience(inputId, inputDto);
+
+            //===== ASSERT =======
+
+            //Verifica que find profile foi chamado
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            //Verifica que id usado como parametro de busca é o correto
+            assertEquals(inputId, uuidArgumentCaptor.getValue());
+            assertEquals(inputId, response.userId());
+
+            //verifique que profile que seria salvo no banco é o correto
+            assertEquals(inputDto.description(), profile.getExperiences().get(1).getDescription());
+            assertEquals(inputDto.companyName(), profile.getExperiences().get(1).getCompanyName());
+            assertEquals(inputDto.role(), profile.getExperiences().get(1).getRole());
+            assertEquals(inputDto.startDate(), profile.getExperiences().get(1).getStartDate());
+            assertEquals(inputDto.endDate(), profile.getExperiences().get(1).getEndDate());
+            assertEquals(inputDto.isCurrent(), profile.getExperiences().get(1).getIsCurrent());
+
+            //Verifica que perfil foi encontrado e nao criado 
+            verify(userRepository, never()).findById(any(UUID.class));
+
+            //Verifica se experiencia foi adicionada
+            assertEquals(inputDto.description(), response.experiences().get(1).description());
+            assertEquals(inputDto.companyName(), response.experiences().get(1).companyName());
+            assertEquals(inputDto.role(), response.experiences().get(1).role());
+            assertEquals(inputDto.startDate(), response.experiences().get(1).startDate());
+            assertEquals(inputDto.endDate(), response.experiences().get(1).endDate());
+            assertEquals(inputDto.isCurrent(), response.experiences().get(1).isCurrent());
+        }
+
+        @Test
+        @DisplayName("Should add experience sucessfully when profile dont exist")
+        void shouldAddExperienceSucessfullyWhenProfileDontExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
+            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado ->{
+                return chamado.getArgument(0);
+            });
+            
+            //===== ACT =======
+            var response = candidateProfileService.addExperience(inputId, inputDto);
+
+            //===== ASSERT =======
+
+            //Verifica que find profile foi chamado
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            //Verifica que id usado como parametro de busca é o correto
+            assertEquals(inputId, uuidArgumentCaptor.getValue());
+            assertEquals(inputId, response.userId());
+
+            verify(candidateProfileRepository, times(2)).save(profileArgumentCaptor.capture());
+            var listSaved = profileArgumentCaptor.getAllValues();
+            var profileFinalSaved = listSaved.get(1);
+
+            //verifique que profile que seria salvo no banco é o correto
+            assertEquals(inputDto.description(), profileFinalSaved.getExperiences().get(0).getDescription());
+            assertEquals(inputDto.companyName(), profileFinalSaved.getExperiences().get(0).getCompanyName());
+            assertEquals(inputDto.role(), profileFinalSaved.getExperiences().get(0).getRole());
+            assertEquals(inputDto.startDate(), profileFinalSaved.getExperiences().get(0).getStartDate());
+            assertEquals(inputDto.endDate(), profileFinalSaved.getExperiences().get(0).getEndDate());
+            assertEquals(inputDto.isCurrent(), profileFinalSaved.getExperiences().get(0).getIsCurrent());
+
+            //Verifica que perfil nao foi encontrado e posteriormente criado
+            verify(userRepository, times(1)).findById(any(UUID.class));
+
+
+            //Verifica se experiencia foi adicionada
+            assertEquals(inputDto.description(), response.experiences().get(0).description());
+            assertEquals(inputDto.companyName(), response.experiences().get(0).companyName());
+            assertEquals(inputDto.role(), response.experiences().get(0).role());
+            assertEquals(inputDto.startDate(), response.experiences().get(0).startDate());
+            assertEquals(inputDto.endDate(), response.experiences().get(0).endDate());
+            assertEquals(inputDto.isCurrent(), response.experiences().get(0).isCurrent());
+        }
+
+        @Test
+        @DisplayName("Should not add experience when profile and user dont exist")
+        void shouldNotAddExperienceWhenProfileAndUserDontExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.empty()).when(userRepository).findById(inputId);
+            
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.addExperience(inputId, inputDto));
+
+            //===== ASSERT =======
+
+            //Verifica que find profile foi chamado
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            //Verifica que id usado como parametro de busca é o correto
+            assertEquals(inputId, uuidArgumentCaptor.getValue());
+
+            //Verifica que perfil nao foi encontrado
+            verify(userRepository, times(1)).findById(any(UUID.class));
+
+            //Assegura que mensagem de excção lançada é a correta
+            assertEquals("Usuário não encontrado", response.getMessage());
+
+            //Assegura que nenhuma informação foi salva no banco
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+        }
+
+        @Test
+        @DisplayName("Should not add experience when profile don't exist and userRole isn't Candidate")
+        void shouldNotAddExperienceWhenProfileDontExistAndUserRoleIsntCandidate(){
+            //===== ARRANGE =======
+            user.setRole("COMPANY");
+            var inputId = userId;
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
+            
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.addExperience(inputId, inputDto));
+
+            //===== ASSERT =======
+
+            //Verifica que find profile foi chamado
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            //Verifica que id usado como parametro de busca é o correto
+            assertEquals(inputId, uuidArgumentCaptor.getValue());
+
+            //Verifica que perfil nao foi encontrado
+            verify(userRepository, times(1)).findById(any(UUID.class));
+
+            //Assegura que mensagem de excção lançada é a correta
+            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
+
+            //Assegura que nenhuma informação foi salva no banco
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+        }
+
+        @Test
+        @DisplayName("Should not add experience when profile exist but userRole isn't Candidate")
+        void shouldNotAddExperienceWhenProfileExistButUserRoleIsntCandidate(){
+            //===== ARRANGE =======
+            user.setRole("COMPANY");
+            var inputId = userId;
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+            
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.addExperience(inputId, inputDto));
+
+            //===== ASSERT =======
+
+            //Verifica que find profile foi chamado
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            //Verifica que id usado como parametro de busca é o correto
+            assertEquals(inputId, uuidArgumentCaptor.getValue());
+
+            //Verifica que perfil foi encontrado
+            verify(userRepository, never()).findById(any(UUID.class));
+
+            //Assegura que mensagem de excção lançada é a correta
+            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
+
+            //Assegura que nenhuma informação foi salva no banco
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+        }
+    }
+
 }
