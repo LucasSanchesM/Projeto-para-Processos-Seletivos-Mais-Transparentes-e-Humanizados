@@ -77,6 +77,9 @@ public class CandidateProfileServiceTest {
     @Captor
     private ArgumentCaptor<String> keyResumeArgumentCaptor;
 
+    @Captor
+    private ArgumentCaptor<CandidateExperience> experienceArgumentCaptor;
+
     private UUID userId;
     private User user;
     private UUID candidateId;
@@ -144,7 +147,7 @@ public class CandidateProfileServiceTest {
     }
 
     @Nested
-    class getProfileByUserId {
+    class GetProfileByUserId {
 
         @Test
         @DisplayName("Should get a profile succefully")
@@ -304,7 +307,7 @@ public class CandidateProfileServiceTest {
     }
 
     @Nested
-    class updateProfile {
+    class UpdateProfile {
 
         @Test
         @DisplayName("Should update the headline profile succefully when it already exist")
@@ -480,7 +483,7 @@ public class CandidateProfileServiceTest {
 
 
     @Nested
-    class uploadAvatar{
+    class UploadAvatar{
 
         private MockMultipartFile file;
         private StoredFile storedFile;
@@ -869,7 +872,7 @@ public class CandidateProfileServiceTest {
     }
 
     @Nested
-    class uploadResume{
+    class UploadResume{
 
         private MockMultipartFile file;
         private StoredFile storedFile;
@@ -1255,7 +1258,7 @@ public class CandidateProfileServiceTest {
     }
 
     @Nested
-    class addExperience{
+    class AddExperience{
 
         private CreateExperienceDto inputDto;
 
@@ -1445,4 +1448,96 @@ public class CandidateProfileServiceTest {
         }
     }
 
+    @Nested
+    class UpdateExperience{
+
+        private CreateExperienceDto updateExperienceDto;
+
+        @BeforeEach
+        void setUp(){
+            updateExperienceDto = new CreateExperienceDto(
+            "EmpresaNova",
+            "DesenvolvedorNovo",
+            "Responsável pelo desenvolvimento e manutenção de APIs REST utilizando Spring Boot",
+            LocalDate.of(2023, 3, 1),
+            null,
+            true
+            );
+        }
+
+        @Test
+        @DisplayName("Should update a experience succesfully")
+        void shouldUpdateAExperienceSucessfully(){
+            //===== ARRANGE =======
+            var inputUserId = userId;
+            var inputExpId = profile.getExperiences().get(0).getId();
+            var inputDto = updateExperienceDto;
+
+            doReturn(Optional.of(profile.getExperiences().get(0))).when(candidateExperienceRepository).findByIdAndCandidateProfileUserId(inputExpId, inputUserId);
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputUserId);
+            when(candidateExperienceRepository.save(any(CandidateExperience.class))).thenAnswer(chamado -> {
+                return chamado.getArgument(0);
+            });
+
+            //===== ACT =======
+            var response = candidateProfileService.updateExperience(inputUserId, inputExpId, inputDto);
+
+            //===== ASSERT =======
+
+            //captura os ids inseridos na pesquisa e depois verifica se batem com os inseridos no metodo
+            verify(candidateExperienceRepository, times(1)).findByIdAndCandidateProfileUserId(uuidArgumentCaptor.capture(), uuidArgumentCaptor.capture());
+            var listOfIds = uuidArgumentCaptor.getAllValues();
+            assertEquals(inputExpId, listOfIds.get(0));
+            assertEquals(inputUserId, listOfIds.get(1));
+
+            //Captura candidate que seria salvo no banco
+            verify(candidateExperienceRepository).save(experienceArgumentCaptor.capture());
+            var experienceCaptured = experienceArgumentCaptor.getValue();
+
+            //Verifica se informação salva no banco bate com o inserido no metodo
+            assertEquals(inputDto.companyName(), experienceCaptured.getCompanyName());
+            assertEquals(inputDto.role(), experienceCaptured.getRole());
+            assertEquals(inputDto.description(), experienceCaptured.getDescription());
+            assertEquals(inputDto.startDate(), experienceCaptured.getStartDate());
+            assertEquals(inputDto.endDate(), experienceCaptured.getEndDate());
+            assertEquals(inputDto.isCurrent(), experienceCaptured.getIsCurrent());
+
+
+            //Verifica se informação salva no banco bateria com o retornado
+            assertEquals(experienceCaptured.getId(), response.experiences().get(0).id());
+            assertEquals(experienceCaptured.getCompanyName(), response.experiences().get(0).companyName());
+            assertEquals(experienceCaptured.getRole(), response.experiences().get(0).role());
+            assertEquals(experienceCaptured.getDescription(), response.experiences().get(0).description());
+            assertEquals(experienceCaptured.getStartDate(), response.experiences().get(0).startDate());
+            assertEquals(experienceCaptured.getEndDate(), response.experiences().get(0).endDate());
+            assertEquals(experienceCaptured.getIsCurrent(), response.experiences().get(0).isCurrent());
+            assertEquals(experienceCaptured.getCreatedAt(), response.experiences().get(0).createdAt());
+        }
+
+        @Test
+        @DisplayName("Should not update a experience when it dont exist")
+        void shouldNotUpdateAExperienceWhenItDontExist(){
+            //===== ARRANGE =======
+            var inputUserId = userId;
+            var inputExpId = profile.getExperiences().get(0).getId();
+            var inputDto = updateExperienceDto;
+
+            doReturn(Optional.empty()).when(candidateExperienceRepository).findByIdAndCandidateProfileUserId(inputExpId, inputUserId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()->candidateProfileService.updateExperience(inputUserId, inputExpId, inputDto));
+
+            //===== ASSERT =======
+
+            //captura os ids inseridos na pesquisa e depois verifica se batem com os inseridos no metodo
+            verify(candidateExperienceRepository, times(1)).findByIdAndCandidateProfileUserId(uuidArgumentCaptor.capture(), uuidArgumentCaptor.capture());
+            var listOfIds = uuidArgumentCaptor.getAllValues();
+            assertEquals(inputExpId, listOfIds.get(0));
+            assertEquals(inputUserId, listOfIds.get(1));
+
+            //Verifica que nao houve alterações no banco
+            verify(candidateExperienceRepository, never()).save(any(CandidateExperience.class));
+            assertEquals("Experiência não encontrada para este usuário", response.getMessage());
+        }
+    }
 }
