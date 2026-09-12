@@ -36,6 +36,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.unisal.processoseletivoapi.candidate.dto.CreateExperienceDto;
+import com.unisal.processoseletivoapi.candidate.dto.CreateProjectDto;
 import com.unisal.processoseletivoapi.candidate.dto.UpdateCandidateProfileDto;
 import com.unisal.processoseletivoapi.candidate.entity.CandidateExperience;
 import com.unisal.processoseletivoapi.candidate.entity.CandidateProfile;
@@ -1618,5 +1619,197 @@ public class CandidateProfileServiceTest {
 
         }
 
+    }
+
+    @Nested
+    class AddProject{
+
+        private CreateProjectDto newProject;
+
+        @BeforeEach 
+        void setUp(){
+            //Projeto que vai ser usado para os testes
+
+            newProject = new CreateProjectDto(
+                "API REST de Recrutamento",
+                "Sistema de gerenciamento de candidatos e vagas construído com Spring Boot e PostgreSQL",
+                "https://github.com/candidato-exemplo/recruitment-api",
+                List.of("Java", "Spring Boot", "PostgreSQL", "Docker")
+            );
+        }
+
+        @Test
+        @DisplayName("Should add a project successfully when profile exist")
+        void shouldAddAProjectSucessfullyWhenProfileExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var inputDto = newProject;
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado ->{
+                return chamado.getArgument(0);
+            });
+            //===== ACT =======
+            var response = candidateProfileService.addProject(inputId, inputDto);
+
+            //===== ASSERT =======
+
+            //Verifica que foi feita a procura de perfil e captura id usado como parametro de busca
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+
+            //verifica que id usado pra busca bate com o inserido no metodo original
+            assertEquals(inputId, uuidArgumentCaptor.getValue());
+
+            //Verifica que metodo para salvar alterações foi chamado e captura objeto usado como parametro
+            verify(candidateProfileRepository, times(1)).save(profileArgumentCaptor.capture());
+            var profileCaptured = profileArgumentCaptor.getValue();
+
+            //Verifica que objeto que seria salvo é correto
+            assertEquals("API REST de Recrutamento", profileCaptured.getProjects().get(1).getTitle());
+            assertEquals("Sistema de gerenciamento de candidatos e vagas construído com Spring Boot e PostgreSQL", profileCaptured.getProjects().get(1).getDescription());
+            assertEquals("https://github.com/candidato-exemplo/recruitment-api", profileCaptured.getProjects().get(1).getProjectUrl());
+            assertEquals(List.of("Java", "Spring Boot", "PostgreSQL", "Docker"), profileCaptured.getProjects().get(1).getToolsAndSkills());
+
+            //Verifica userId do profile retornado bate com inserido na requisição
+            assertEquals(inputId, response.userId());
+
+            //Verifica que valores retornado em project estao corretos
+            assertEquals("API REST de Recrutamento", response.projects().get(1).title());
+            assertEquals("Sistema de gerenciamento de candidatos e vagas construído com Spring Boot e PostgreSQL", response.projects().get(1).description());
+            assertEquals("https://github.com/candidato-exemplo/recruitment-api", response.projects().get(1).projectUrl());
+            assertEquals(List.of("Java", "Spring Boot", "PostgreSQL", "Docker"), response.projects().get(1).toolsAndSkills());
+        }
+
+        @Test
+        @DisplayName("Should add a project successfully when profile don't exist")
+        void shouldAddAProjectSucessfullyWhenProfileDontExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var inputDto = newProject;
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.of(user)).when(userRepository).findById(userId);
+            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado ->{
+                return chamado.getArgument(0);
+            });
+            //===== ACT =======
+            var response = candidateProfileService.addProject(inputId, inputDto);
+
+            //===== ASSERt =======
+
+            //Verifica que foi feita a procura de perfil e captura id usado como parametro de busca
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            //Verifica que foi necessario fazer a busca por usuario e captura id usado como parametro
+            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
+
+            var listOfIds = uuidArgumentCaptor.getAllValues();//index 0 -> id usado na procura por perfil
+                                                              //index 1-> id usado na procura por usuario
+            //verifica que id usado pra busca de perfil bate com o inserido no metodo original
+            assertEquals(inputId, listOfIds.get(0));
+            //Verifica que id usado pra busca de usuario bate com o inserido no metodo original
+            assertEquals(inputId, listOfIds.get(1));
+            
+
+            //Verifica que metodo para salvar alterações foi chamado duas vezes (uma pra cirar o perfil e outra
+            //adicionar projeto) e captura objeto usado como parametro
+            verify(candidateProfileRepository, times(2)).save(profileArgumentCaptor.capture());
+            var profileCaptured = profileArgumentCaptor.getValue();
+
+            //Verifica que objeto que seria salvo é correto
+            assertEquals("API REST de Recrutamento", profileCaptured.getProjects().get(0).getTitle());
+            assertEquals("Sistema de gerenciamento de candidatos e vagas construído com Spring Boot e PostgreSQL", profileCaptured.getProjects().get(0).getDescription());
+            assertEquals("https://github.com/candidato-exemplo/recruitment-api", profileCaptured.getProjects().get(0).getProjectUrl());
+            assertEquals(List.of("Java", "Spring Boot", "PostgreSQL", "Docker"), profileCaptured.getProjects().get(0).getToolsAndSkills());
+
+            //Verifica userId do profile retornado bate com inserido na requisição
+            assertEquals(inputId, response.userId());
+
+            //Verifica que valores retornado em project estao corretos
+            assertEquals("API REST de Recrutamento", response.projects().get(0).title());
+            assertEquals("Sistema de gerenciamento de candidatos e vagas construído com Spring Boot e PostgreSQL", response.projects().get(0).description());
+            assertEquals("https://github.com/candidato-exemplo/recruitment-api", response.projects().get(0).projectUrl());
+            assertEquals(List.of("Java", "Spring Boot", "PostgreSQL", "Docker"), response.projects().get(0).toolsAndSkills());
+        }
+
+        @Test
+        @DisplayName("Should not add a project when profile don't exist and userRole isn't candidate")
+        void shouldNotAddAProjectWhenProfileDontExistAndUserRoleIsntCandidate(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var inputDto = newProject;
+            user.setRole("COMPANY");
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.of(user)).when(userRepository).findById(userId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.addProject(inputId, inputDto));
+
+            //===== ASSERT =======
+
+            //Verifica que foi feita a procura de perfil e captura id usado como parametro de busca
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            //Verifica que foi necessario fazer a busca por usuario e captura id usado como parametro
+            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
+
+            var listOfIds = uuidArgumentCaptor.getAllValues();//index 0 -> id usado na procura por perfil
+                                                              //index 1-> id usado na procura por usuario
+            //verifica que id usado pra busca de perfil bate com o inserido no metodo original
+            assertEquals(inputId, listOfIds.get(0));
+            //Verifica que id usado pra busca de usuario bate com o inserido no metodo original
+            assertEquals(inputId, listOfIds.get(1));
+            
+            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not add a project when profile exist but userRole isn't candidate")
+        void shouldNotAddAProjectWhenProfileExistButUserRoleIsntCandidate(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var inputDto = newProject;
+            user.setRole("Company");
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.addProject(inputId, inputDto));
+
+            //===== ASSERT =======
+
+            //Verifica que foi feita a procura de perfil e captura id usado como parametro de busca
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            //Verifica que profile foi encontrado e portando nao foi necessario fazer a busca de usuario
+            verify(userRepository, never()).findById(any(UUID.class));
+            //verifica que id usado pra busca de perfil bate com o inserido no metodo original
+            assertEquals(inputId, uuidArgumentCaptor.getValue());
+            
+            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
+        }
+
+        @Test
+        @DisplayName("Should not add a project when profile and user don't exist")
+        void shouldNotAddAProjectWhenProfileAndUserDont(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var inputDto = newProject;
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.empty()).when(userRepository).findById(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.addProject(inputId, inputDto));
+
+            //===== ASSERT =======
+
+            //Verifica que foi feita a procura de perfil e captura id usado como parametro de busca
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            //Verifica que foi necessario fazer a busca por usuario e captura id usado como parametro
+            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
+
+            var listOfIds = uuidArgumentCaptor.getAllValues();//index 0 -> id usado na procura por perfil
+                                                              //index 1-> id usado na procura por usuario
+            //verifica que id usado pra busca de perfil bate com o inserido no metodo original
+            assertEquals(inputId, listOfIds.get(0));
+            //Verifica que id usado pra busca de usuario bate com o inserido no metodo original
+            assertEquals(inputId, listOfIds.get(1));
+            
+            assertEquals("Usuário não encontrado", response.getMessage());
+        }
     }
 }
