@@ -82,6 +82,9 @@ public class CandidateProfileServiceTest {
     @Captor
     private ArgumentCaptor<CandidateExperience> experienceArgumentCaptor;
 
+    @Captor
+    private ArgumentCaptor<CandidateProject> projectArgumentCaptor;
+
     private UUID userId;
     private User user;
     private UUID candidateId;
@@ -126,7 +129,7 @@ public class CandidateProfileServiceTest {
         profile.setGithubUrl("https://github.com/candidato-exemplo");
         profile.setPortfolioUrl("https://candidato.dev");
 
-        // Preenchendo as Skills (@ElementCollection)
+        // Preenchendo as Skills
         profile.setSkills(List.of("Java", "Spring Boot", "PostgreSQL", "Docker", "Git"));
 
         // Criando e associando uma Experiência
@@ -1810,6 +1813,96 @@ public class CandidateProfileServiceTest {
             assertEquals(inputId, listOfIds.get(1));
             
             assertEquals("Usuário não encontrado", response.getMessage());
+        }
+    }
+
+
+    @Nested
+    class UpdateProject{
+        private CreateProjectDto updateProject;
+
+        @BeforeEach 
+        void setUp(){
+            //Projeto que vai ser usado para os testes
+
+            updateProject = new CreateProjectDto(
+                "API REST de Recrutamento update",
+                "Sistema de gerenciamento de candidatos e vagas construído com Spring Boot e PostgreSQL update",
+                "https://github.com/candidato-exemplo/recruitment-api update",
+                List.of("Java", "Spring Boot", "PostgreSQL", "Docker")
+            );
+        }
+
+        @Test
+        @DisplayName("Should update a project successfully")
+        void shouldUpdateAProjectSuccessfully(){
+            //===== ARRANGE =======
+            var inputUserId = userId;
+            var inputProjId = profile.getProjects().get(0).getId();
+            var inputDto = updateProject;
+            doReturn(Optional.of(profile.getProjects().get(0))).when(candidateProjectRepository).findByIdAndCandidateProfileUserId(inputProjId, inputUserId);
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputUserId);
+            when(candidateProjectRepository.save(any(CandidateProject.class))).thenAnswer(chamado ->{
+                return chamado.getArgument(0);
+            });
+            //===== ACT =======
+            var response = candidateProfileService.updateProject(inputUserId, inputProjId, inputDto);
+
+            //===== ASSERT =======
+            
+            //Verifica se procura de projeto foi chamado e captura os ids usados como parametro
+            verify(candidateProjectRepository, times(1)).findByIdAndCandidateProfileUserId(uuidArgumentCaptor.capture(), uuidArgumentCaptor.capture());
+            var listOfIds = uuidArgumentCaptor.getAllValues(); //index 0 -> project id & index 1 -> user id
+            
+            //Verifica se ids usados como parametro de busca batem com o colocado na requisição
+            assertEquals(inputProjId, listOfIds.get(0));
+            assertEquals(inputUserId, listOfIds.get(1));
+
+            //Verifica se metodo de atualizar novas informações foi chamado e captura projecto que seria salvo no banco
+            verify(candidateProjectRepository, times(1)).save(projectArgumentCaptor.capture());
+            var projectCaptured = projectArgumentCaptor.getValue();
+
+            //Verifica se projeto salvo no banco teira infos corretass
+            assertEquals("API REST de Recrutamento update", projectCaptured.getTitle());
+            assertEquals("Sistema de gerenciamento de candidatos e vagas construído com Spring Boot e PostgreSQL update", projectCaptured.getDescription());
+            assertEquals("https://github.com/candidato-exemplo/recruitment-api update", projectCaptured.getProjectUrl());
+            assertEquals(List.of("Java", "Spring Boot", "PostgreSQL", "Docker"), projectCaptured.getToolsAndSkills());
+
+            //Verifica se retorno foi com as infos corretas
+            assertEquals("API REST de Recrutamento update", response.projects().get(0).title());
+            assertEquals("Sistema de gerenciamento de candidatos e vagas construído com Spring Boot e PostgreSQL update", response.projects().get(0).description());
+            assertEquals("https://github.com/candidato-exemplo/recruitment-api update", response.projects().get(0).projectUrl());
+            assertEquals(List.of("Java", "Spring Boot", "PostgreSQL", "Docker"), response.projects().get(0).toolsAndSkills());
+            
+        }
+
+        @Test
+        @DisplayName("Should not update a project when it not found")
+        void shouldNouUpdateAProjectWhenItNotFound(){
+            //===== ARRANGE =======
+            var inputUserId = userId;
+            var inputProjId = profile.getProjects().get(0).getId();
+            var inputDto = updateProject;
+            doReturn(Optional.empty()).when(candidateProjectRepository).findByIdAndCandidateProfileUserId(inputProjId, inputUserId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.updateProject(inputUserId, inputProjId, inputDto));
+
+            //===== ASSERT =======
+            
+            //Verifica se procura de projeto foi chamado e captura os ids usados como parametro
+            verify(candidateProjectRepository, times(1)).findByIdAndCandidateProfileUserId(uuidArgumentCaptor.capture(), uuidArgumentCaptor.capture());
+            var listOfIds = uuidArgumentCaptor.getAllValues(); //index 0 -> project id & index 1 -> user id
+            
+            //Verifica se ids usados como parametro de busca batem com o colocado na requisição
+            assertEquals(inputProjId, listOfIds.get(0));
+            assertEquals(inputUserId, listOfIds.get(1));
+
+            //Verifica se nao houve alterações no banco
+            verify(candidateProjectRepository, never()).save(any(CandidateProject.class));
+
+            assertEquals("Projeto não encontrado para este usuário", response.getMessage());
+            
         }
     }
 }
