@@ -1877,8 +1877,8 @@ public class CandidateProfileServiceTest {
         }
 
         @Test
-        @DisplayName("Should not update a project when it not found")
-        void shouldNouUpdateAProjectWhenItNotFound(){
+        @DisplayName("Should not update a project when itit not found")
+        void shouldNouUpdateAProjectWhtFound(){
             //===== ARRANGE =======
             var inputUserId = userId;
             var inputProjId = profile.getProjects().get(0).getId();
@@ -1903,6 +1903,84 @@ public class CandidateProfileServiceTest {
 
             assertEquals("Projeto não encontrado para este usuário", response.getMessage());
             
+        }
+    }
+
+    @Nested
+    class DeleteProject{
+        @Test
+        @DisplayName("Should delete a project successfully")
+        void shouldDeleteAProjectSucessfully(){
+            //===== ARRANGE =======
+            var inputUserId = userId;
+            var inputProjId = profile.getProjects().get(0).getId();
+            doReturn(Optional.of(profile.getProjects().get(0))).when(candidateProjectRepository).findByIdAndCandidateProfileUserId(inputProjId, inputUserId);
+            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado -> {
+                return chamado.getArgument(0);
+            });
+
+            //===== ACT =======
+            var response = candidateProfileService.deleteProject(inputUserId, inputProjId);
+
+            //===== ASSERT =======
+            
+            verify(candidateProjectRepository, times(1)).findByIdAndCandidateProfileUserId(uuidArgumentCaptor.capture(), uuidArgumentCaptor.capture());
+            var listOfIds = uuidArgumentCaptor.getAllValues(); //index 0 -> project id & index 1 -> user id
+            
+            //Verifica se ids usados como parametro de busca batem com o colocado na requisição
+            assertEquals(inputProjId, listOfIds.get(0));
+            assertEquals(inputUserId, listOfIds.get(1));
+
+            //verifica que delete foi chamado e captura perfil que seria deletado
+            verify(candidateProjectRepository, times(1)).delete(projectArgumentCaptor.capture());
+            var projectCaptured = projectArgumentCaptor.getValue();
+
+            //Verifica se projeto deletado do banco é o com as infos corretass
+            assertEquals("API REST de Recrutamento", projectCaptured.getTitle());
+            assertNull(projectCaptured.getDescription());
+            assertEquals("https://github.com/candidato-exemplo/recruitment-api", projectCaptured.getProjectUrl());
+            assertEquals(Collections.emptyList(), projectCaptured.getToolsAndSkills());
+            assertEquals(projectCaptured.getId(), inputProjId);
+
+            //Verifica se metodo de atualizar novas informações foi chamado e captura profile que seria salvo no banco
+            verify(candidateProfileRepository, times(1)).save(profileArgumentCaptor.capture());
+            var profileCaptured = profileArgumentCaptor.getValue();
+
+            //Verifica que profile salvo nao possui mais o projeto deletado
+            assertEquals(Collections.emptyList(), profileCaptured.getProjects());
+            
+            //Verifica que dto retornado nao possui mais o projeto deletado
+            assertEquals(Collections.emptyList(), response.projects());
+        }
+
+        @Test
+        @DisplayName("Should not delete a project when it not found")
+        void shouldNotDeleteAProjectWhenItNotFound(){
+            //===== ARRANGE =======
+            var inputUserId = userId;
+            var inputProjId = profile.getProjects().get(0).getId();
+            doReturn(Optional.empty()).when(candidateProjectRepository).findByIdAndCandidateProfileUserId(inputProjId, inputUserId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.deleteProject(inputUserId, inputProjId));
+
+            //===== ASSERT =======
+            
+            verify(candidateProjectRepository, times(1)).findByIdAndCandidateProfileUserId(uuidArgumentCaptor.capture(), uuidArgumentCaptor.capture());
+            var listOfIds = uuidArgumentCaptor.getAllValues(); //index 0 -> project id & index 1 -> user id
+            
+            //Verifica se ids usados como parametro de busca batem com o colocado na requisição
+            assertEquals(inputProjId, listOfIds.get(0));
+            assertEquals(inputUserId, listOfIds.get(1));
+
+            //Assegura que nada foi deletado
+            verify(candidateProjectRepository, never()).delete(any(CandidateProject.class));
+
+            //Verifica que metodo de atualizar novas informações nao foi chamado
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+            
+            assertEquals("Projeto não encontrado para este usuário", response.getMessage());
+
         }
     }
 }
