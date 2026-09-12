@@ -2,6 +2,7 @@ package com.unisal.processoseletivoapi.services;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -1539,5 +1540,83 @@ public class CandidateProfileServiceTest {
             verify(candidateExperienceRepository, never()).save(any(CandidateExperience.class));
             assertEquals("Experiência não encontrada para este usuário", response.getMessage());
         }
+    }
+
+    @Nested
+    class DeleteExperience{
+        @Test
+        @DisplayName("Should delete a experience successfully")
+        void shouldDeleteAExperienceSuccessfully(){
+            //===== ARRANGE =======
+            var inputUserId = userId;
+            var inputExpId = profile.getExperiences().get(0).getId();
+            doReturn(Optional.of(profile.getExperiences().get(0))).when(candidateExperienceRepository).findByIdAndCandidateProfileUserId(inputExpId, inputUserId);
+            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado ->{
+                return chamado.getArgument(0);
+            });
+            //===== ACT =======
+            var response = candidateProfileService.deleteExperience(inputUserId, inputExpId);
+
+            //===== ASSERT =======
+
+            //Verifica se procura de experiencia foi chamado corretamente e se valores batem
+            verify(candidateExperienceRepository, times(1)).findByIdAndCandidateProfileUserId(uuidArgumentCaptor.capture(), uuidArgumentCaptor.capture());
+            var listOfIds = uuidArgumentCaptor.getAllValues(); //index 0 -> experience id & index 1 -> user id
+            assertEquals(inputExpId, listOfIds.get(0));
+            assertEquals(inputUserId, listOfIds.get(1));
+            
+            //Verifica deletar experiencia foi chamado e captura o que foi usado como parametro
+            verify(candidateExperienceRepository, times(1)).delete(experienceArgumentCaptor.capture());
+            var experienceDeleted = experienceArgumentCaptor.getValue();
+
+            //Verifica se salvar profile foi chamado e captura o objeto
+            verify(candidateProfileRepository, times(1)).save(profileArgumentCaptor.capture());
+            var profileCaptured = profileArgumentCaptor.getValue();
+
+            //Verifica que experience deletada é a correta
+            assertEquals(inputExpId, experienceDeleted.getId());
+
+            //Verifica que usuario salvo foi o correto
+            assertEquals(inputUserId, profileCaptured.getUser().getId());
+
+            //Verifica que perfil que seria salvo no banco nao possuia a informação deletada
+            assertEquals(Collections.emptyList(), profileCaptured.getExperiences());
+
+            //Verifica que dto retornado é o equivalente ao objeto usaod para salvar no banco
+            assertEquals(profile.getId(), response.id());
+
+            //Verifica que dto retornado nao possui a experiencia deletada
+            assertEquals(Collections.emptyList(), response.experiences());
+
+        }
+
+        @Test
+        @DisplayName("Should not delete a experience when didn't find experience")
+        void shouldNotDeleteAExperienceWhenDidntFindExperience(){
+            //===== ARRANGE =======
+            var inputUserId = userId;
+            var inputExpId = profile.getExperiences().get(0).getId();
+            doReturn(Optional.empty()).when(candidateExperienceRepository).findByIdAndCandidateProfileUserId(inputExpId, inputUserId);
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.deleteExperience(inputUserId, inputExpId));
+
+            //===== ASSERT =======
+
+            //Verifica se procura de experiencia foi chamado corretamente e se valores batem
+            verify(candidateExperienceRepository, times(1)).findByIdAndCandidateProfileUserId(uuidArgumentCaptor.capture(), uuidArgumentCaptor.capture());
+            var listOfIds = uuidArgumentCaptor.getAllValues(); //index 0 -> experience id & index 1 -> user id
+            assertEquals(inputExpId, listOfIds.get(0));
+            assertEquals(inputUserId, listOfIds.get(1));
+            
+            //Verifica nenhuma experiencia foi deletada
+            verify(candidateExperienceRepository, never()).delete(any(CandidateExperience.class));
+
+            //Verifica que nada no perfil foi salvo ou atualizado
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+
+            assertEquals("Experiência não encontrada para este usuário", response.getMessage());
+
+        }
+
     }
 }
