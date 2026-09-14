@@ -9,7 +9,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
@@ -152,7 +151,7 @@ public class CandidateProfileServiceTest {
     }
 
     @Nested
-    class GetProfileByUserId {
+    class FindProfileByUserId {
 
         @Test
         @DisplayName("Should get a profile succefully")
@@ -162,7 +161,7 @@ public class CandidateProfileServiceTest {
             doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(input);
 
             //===== ACT =======
-            var response = candidateProfileService.getProfileByUserId(userId);
+            var response = candidateProfileService.findProfileByUserId(userId);
 
             //===== ASSERT =======
             //Verifica quantas vezes o metodo de procurar id foi chamado e captura o id inserido como valor
@@ -177,22 +176,23 @@ public class CandidateProfileServiceTest {
             verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
         }
 
+
         @Test
-        @DisplayName("Should create a profile when it don't exist")
-        void shouldCreateAProfileWhenItDontExist() {
+        @DisplayName("Should not return a profile when it don't exist ")
+        void shouldNotdReturnAProfileWhenItDontExist() {
             //===== ARRANGE =======
             var input = userId;
+            user.setRole("COMPANY");
             doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(input);
             doReturn(Optional.of(user)).when(userRepository).findById(input);
-            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado -> {
-                var candidate = chamado.getArgument(0);
-                return candidate;
-            });
 
             //===== ACT =======
-            var response = candidateProfileService.getProfileByUserId(input);
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.findProfileByUserId(input));
 
             //===== ASSERT =======
+            //Verifica se a mensagem do exception lançado é a correta
+            assertEquals("Nenhum perfil associado a este id", response.getMessage());
+
             //Verifica quantas vezes o metodo de procurar id foi chamado e captura o id inserido como valor
             verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
             //Verifica quantas vezes foi procurado um usuario com aquele id e se foi chamado apenas uma vez
@@ -206,93 +206,24 @@ public class CandidateProfileServiceTest {
             //Verifica se o id utilizado na busca por perfil é o mesmo utilizado na busca por usuario
             assertEquals(idCaptured1, idCaptured2);
 
-            //verica se o id passado na requisição, bate com o da pesquisa e se o da pesquisa bate com o userId retornado
-            assertEquals(input, idCaptured1);
-            assertEquals(idCaptured1, response.userId());
-
-            //Garante que o usuario foi criado e nao encontrado
-            verify(candidateProfileRepository, times(1)).save(any(CandidateProfile.class));
+            //Verifica que nenhum perfil novo foi criado
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
         }
 
         @Test
-        @DisplayName("Should not return a profile when userId don't exist")
-        void shouldNotdReturnAProfileWhenUserIdDontExist() {
+        @DisplayName("Should not return a profile when it and user dont exist")
+        void shouldNotdReturnAProfileWhenItExistButUserRoleIsntCandidate() {
             //===== ARRANGE =======
             var input = userId;
             doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(input);
             doReturn(Optional.empty()).when(userRepository).findById(input);
 
             //===== ACT =======
-            var response = assertThrows(BusinessException.class, () -> candidateProfileService.getProfileByUserId(input));
+            var response = assertThrows(BusinessException.class, () -> candidateProfileService.findProfileByUserId(input));
 
             //===== ASSERT =======
             //Verifica se a mensagem do exception lançado é a correta
-            assertEquals("Usuário não encontrado", response.getMessage());
-
-            //Verifica quantas vezes o metodo de procurar id foi chamado e captura o id inserido como valor
-            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
-            //Verifica quantas vezes foi procurado um usuario com aquele id e se foi chamado apenas uma vez
-            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
-
-            //Coleta os id capturados
-            var listIdCaptured = uuidArgumentCaptor.getAllValues();
-            var idCaptured1 = listIdCaptured.get(0);
-            var idCaptured2 = listIdCaptured.get(1);
-
-            //Verifica se o id utilizado na busca por perfil é o mesmo utilizado na busca por usuario
-            assertEquals(idCaptured1, idCaptured2);
-
-            //Verifica que nenhum perfil novo foi criado
-            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
-        }
-
-        @Test
-        @DisplayName("Should not return a profile when it don't exist and userRole isn't candidate")
-        void shouldNotdReturnAProfileWhenItDontExistAndUserRoleIsntCandidate() {
-            //===== ARRANGE =======
-            var input = userId;
-            user.setRole("COMPANY");
-            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(input);
-            doReturn(Optional.of(user)).when(userRepository).findById(input);
-
-            //===== ACT =======
-            var response = assertThrows(BusinessException.class, () -> candidateProfileService.getProfileByUserId(input));
-
-            //===== ASSERT =======
-            //Verifica se a mensagem do exception lançado é a correta
-            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
-
-            //Verifica quantas vezes o metodo de procurar id foi chamado e captura o id inserido como valor
-            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
-            //Verifica quantas vezes foi procurado um usuario com aquele id e se foi chamado apenas uma vez
-            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
-
-            //Coleta os id capturados
-            var listIdCaptured = uuidArgumentCaptor.getAllValues();
-            var idCaptured1 = listIdCaptured.get(0);
-            var idCaptured2 = listIdCaptured.get(1);
-
-            //Verifica se o id utilizado na busca por perfil é o mesmo utilizado na busca por usuario
-            assertEquals(idCaptured1, idCaptured2);
-
-            //Verifica que nenhum perfil novo foi criado
-            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
-        }
-
-        @Test
-        @DisplayName("Should not return a profile when it exist but userRole isn't candidate")
-        void shouldNotdReturnAProfileWhenItExistButUserRoleIsntCandidate() {
-            //===== ARRANGE =======
-            var input = userId;
-            user.setRole("COMPANY");
-            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(input);
-
-            //===== ACT =======
-            var response = assertThrows(BusinessException.class, () -> candidateProfileService.getProfileByUserId(input));
-
-            //===== ASSERT =======
-            //Verifica se a mensagem do exception lançado é a correta
-            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
+            assertEquals("Este usuario não existe", response.getMessage());
 
             //Verifica quantas vezes o metodo de procurar id foi chamado e captura o id inserido como valor
             verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
@@ -305,9 +236,6 @@ public class CandidateProfileServiceTest {
 
             //Verifica que nenhum perfil novo foi criado
             verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
-
-            //Verifica se nenhuma procura de usuario foi feita, ou seja, se conseguiu achar o user id pela pesquisaa na tabela candidateProfiles
-            verify(userRepository, never()).findById(any(UUID.class));
         }
     }
 
@@ -315,8 +243,8 @@ public class CandidateProfileServiceTest {
     class UpdateProfile {
 
         @Test
-        @DisplayName("Should update the headline profile succefully when it already exist")
-        void shouldUpdateTheHeadlineProfileSuccefullyWhenItAlreadyExist() {
+        @DisplayName("Should update the headline profile successfully")
+        void shouldUpdateTheHeadlineProfileSuccessfully() {
             //===== ARRANGE =======
 
             var inputDto = new UpdateCandidateProfileDto(
@@ -337,9 +265,6 @@ public class CandidateProfileServiceTest {
             //===== ASSERT =======
             //Verifica se o cabeçalho retornado foi o atualizado
             assertEquals("CabeçalhoDiferente", response.headline());
-
-            //Verifica que foi encontrado o perfil
-            verify(userRepository, never()).findById(any(UUID.class));
 
             //verifica se o que foi salvo no banco foi o correto
             verify(candidateProfileRepository, times(1)).save(profileArgumentCaptor.capture());
@@ -351,8 +276,8 @@ public class CandidateProfileServiceTest {
         }
 
         @Test
-        @DisplayName("Should update the headline profile succefully when it dont exist")
-        void shouldUpdateTheHeadlineProfileSuccefullyWhenItDontExist() {
+        @DisplayName("Should not update a profile when it dont exist")
+        void shouldNotUpdateAProfileWhenItDontExist() {
             //===== ARRANGE =======
 
             var inputDto = new UpdateCandidateProfileDto(
@@ -363,123 +288,13 @@ public class CandidateProfileServiceTest {
             var inputId = userId;
 
             doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
-
-            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado -> {
-                var profileSaved = chamado.getArgument(0);
-                return profileSaved;
-            });
-
-            //===== ACT =======
-            var response = candidateProfileService.updateProfile(inputId, inputDto);
-
-            //===== ASSERT =======
-            //Verifica se o cabeçalho retornado foi o atualizado
-            assertEquals("CabeçalhoDiferente", response.headline());
-
-            //Verifica se o usuario foi procurado e consequentemente se profile foi criado
-            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
-
-            //Verifica se id passado como parametro no find bate com o do input
-            var idUsed = uuidArgumentCaptor.getValue();
-            assertEquals(inputId, idUsed);
-
-            //verifica se o que foi salvo no banco foi o correto (ATENCÂO NO MOMENTO A DUAS CONSULTAS NO BANCO UMA PRA CRIAR O PERFIL E OUTRA PRA ATUALIZAR)
-            verify(candidateProfileRepository, times(2)).save(profileArgumentCaptor.capture());
-            var profileSaved = profileArgumentCaptor.getValue();
-            assertEquals("CabeçalhoDiferente", profileSaved.getHeadline());
-
-            //Verifica se um dos campos nao foi zerado
-            assertNull(response.summary());
-        }
-
-        @Test
-        @DisplayName("Should not update a profile when user isn't dont exist")
-        void shouldNotUpdateAProfileWhenUserDontExist() {
-            //===== ARRANGE =======
-
-            var inputDto = new UpdateCandidateProfileDto(
-                    "CabeçalhoDiferente",
-                    null, null, null, null, null, null, null, null, null, null, null, null
-            );
-
-            var inputId = userId;
-
-            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.empty()).when(userRepository).findById(inputId);
-
             //===== ACT =======
             var response = assertThrows(BusinessException.class, () -> candidateProfileService.updateProfile(userId, inputDto));
 
             //===== ASSERT =======
+            
             //Verifica se mensagem de excessão lançada é a correta
-            assertEquals("Usuário não encontrado", response.getMessage());
-
-            //Verifica se nao haveria alteração no banco
-            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
-
-        }
-
-        @Test
-        @DisplayName("Should not update a profile when it dont exist but userRole isn't CANDIDATE")
-        void shouldNotUpdateAProfileWhenItDontExistButUserRoleIsntCandidate() {
-            //===== ARRANGE =======
-
-            user.setRole("COMPANY");
-
-            var inputDto = new UpdateCandidateProfileDto(
-                    "CabeçalhoDiferente",
-                    null, null, null, null, null, null, null, null, null, null, null, null
-            );
-
-            var inputId = userId;
-
-            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
-
-            //===== ACT =======
-            var response = assertThrows(BusinessException.class, () -> candidateProfileService.updateProfile(userId, inputDto));
-
-            //===== ASSERT =======
-            //Verifica se mensagem de excessão lançada é a correta
-            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
-
-            //Verifica se o usuario foi procurado corretamente
-            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
-
-            //Verifica se id passado como parametro no find bate com o do input
-            var idUsed = uuidArgumentCaptor.getValue();
-            assertEquals(inputId, idUsed);
-
-            //Verifica se nao haveria alteração no banco
-            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
-        }
-
-        @Test
-        @DisplayName("Should not update a profile when it but userRole isn't CANDIDATE")
-        void shouldNotUpdateAProfileWhenItExistButUserRoleIsntCandidate() {
-            //===== ARRANGE =======
-
-            user.setRole("COMPANY");
-
-            var inputDto = new UpdateCandidateProfileDto(
-                    "CabeçalhoDiferente",
-                    null, null, null, null, null, null, null, null, null, null, null, null
-            );
-
-            var inputId = userId;
-
-            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
-
-            //===== ACT =======
-            var response = assertThrows(BusinessException.class, () -> candidateProfileService.updateProfile(userId, inputDto));
-
-            //===== ASSERT =======
-            //Verifica se mensagem de excessão lançada é a correta
-            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
-
-            //Verifica se perfil foi encontrado e nao houve necessidade de criar um pela busca de usuario
-            verify(userRepository, never()).findById(any(UUID.class));
+            assertEquals("Não foi encontrado um perfil associado a este usuario", response.getMessage());
 
             //Verifica se nao haveria alteração no banco
             verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
@@ -560,156 +375,26 @@ public class CandidateProfileServiceTest {
             verify(fileStorage, times(1)).deleteQuietly(keyBeforeUpdate);
 
         }
-
-        @Test
-        @DisplayName("Should upload a avatar succefully when profile don't exist")
-        void shouldUploadAAvatarSuccefullyDontExist(){
-            //===== ARRANGE =======
-            var inputId = userId;
-
-            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
-            when(candidateProfileRepository.saveAndFlush(any(CandidateProfile.class))).thenAnswer(chamado ->{
-                var profileSaved = chamado.getArgument(0);
-                return profileSaved;
-            });
-            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado ->{
-                var profileSaved = chamado.getArgument(0);
-                return profileSaved;
-            });
-
-            doReturn(storedFile).when(fileStorage).store( eq("candidate-avatars/" + inputId),
-                                                            anyString(),
-                                                            any(byte[].class),
-                                                            eq("image/png"));
-
-
-            //===== ACT =======
-            var response = candidateProfileService.uploadAvatar(inputId, file);
-            
-
-            //===== ASSERT =======
-
-            //Verifica se foi feita a procura de perfil por userId
-            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
-
-            //Verifica se foi feita a procura de usuario apos nao encontrar profile
-            verify(userRepository, times(1)).findById(any(UUID.class));
-
-            //Verifica se save (criação de inicial de profile) foi chamado (TALVEZ ALTERE DEPOIS)
-            verify(candidateProfileRepository, times(1)).save(profileArgumentCaptor.capture());
-
-            //verifica se saveandflush foi chamado e prepara pra pegar valor que seria salvo
-            verify(candidateProfileRepository, times(1)).saveAndFlush(profileArgumentCaptor.capture());
-
-            //Coleta valores capturados respectivamente no: save e no save and flush
-            var listProfileCaptured = profileArgumentCaptor.getAllValues();
-
-            var profileCapturedNormal = listProfileCaptured.get(0);
-            var profileCapturedFlush = listProfileCaptured.get(1);
-
-            //Verifica que profile salvo possui id correto
-            assertEquals(inputId, profileCapturedNormal.getUser().getId());
-
-            //Verifica que o user do profile retornado é o correto
-            assertEquals(inputId, response.userId());
-            
-            //Verifica que o profile retornado é o correto (capturado no flush)
-            assertEquals(profileCapturedFlush.getId(), response.id());
-
-
-            //Verica que credenciail nova de imagem no banco bate com retornado(flush)
-            assertEquals(profileCapturedFlush.getProfileImageUrl(), response.profileImageUrl());
-
-            //Verfica que credenciais de imagem foram inseridas corretamente no banco
-            assertNotNull(profileCapturedFlush.getProfileImageKey());
-            assertNotNull(profileCapturedFlush.getProfileImageUrl());
-
-            //Assegura que nao nenhuma imagem vai ser deletada (ja que variavel naquele instante estaria vazia)
-            verify(fileStorage, times(1)).deleteQuietly(keyImagArgumentCaptor.capture());
-            assertNull(keyImagArgumentCaptor.getValue());
-
-        }
     
         @Test
-        @DisplayName("Should not upload a avatar when user don't exist")
+        @DisplayName("Should not upload a avatar when profile don't exist")
         void shouldNotUploadAAvatarWhenUserDontExist(){
             //===== ARRANGE =======
             var inputId = userId;
 
             doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.empty()).when(userRepository).findById(inputId);
 
             //===== ACT =======
             var response = assertThrows(BusinessException.class, () -> candidateProfileService.uploadAvatar(inputId, file));
             
-
             //===== ASSERT =======
 
             //Verifica se foi feita a procura de perfil por userId
-            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
-            //Verifica se foi feita a procura de usuario apos nao encontrar profile
-            verify(userRepository, times(1)).findById(any(UUID.class));
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            assertEquals(inputId, uuidArgumentCaptor.getValue());
 
-            assertEquals("Usuário não encontrado", response.getMessage());
-
-            //Assegura que nenhuma operação foi feita no banco
-            verify(candidateProfileRepository, never()).save(profileArgumentCaptor.capture());
-            verify(candidateProfileRepository, never()).saveAndFlush(profileArgumentCaptor.capture());
-
-        }
-        
-        @Test
-        @DisplayName("Should not upload a avatar when profile don't exist and userRole isn't candidate")
-        void shouldNotUploadAAvatarWhenProfileDontExistAndUserRoleIsntCandidate(){
-            //===== ARRANGE =======
-            var inputId = userId;
-            user.setRole("COMPANY");
-
-            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
-
-            //===== ACT =======
-            var response = assertThrows(BusinessException.class, () -> candidateProfileService.uploadAvatar(inputId, file));
-            
-
-            //===== ASSERT =======
-
-            //Verifica se foi feita a procura de perfil por userId
-            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
-            //Verifica se foi feita a procura de usuario apos nao encontrar profile
-            verify(userRepository, times(1)).findById(any(UUID.class));
-
-            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
-
-            //Assegura que nenhuma operação foi feita no banco
-            verify(candidateProfileRepository, never()).save(profileArgumentCaptor.capture());
-            verify(candidateProfileRepository, never()).saveAndFlush(profileArgumentCaptor.capture());
-
-        }
-
-        @Test
-        @DisplayName("Should not upload a avatar when profile exist but userRole isn't candidate")
-        void shouldNotUploadAAvatarWhenProfileExistButUserRoleIsntCandidate(){
-            //===== ARRANGE =======
-            var inputId = userId;
-            user.setRole("COMPANY");
-
-            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
-
-            //===== ACT =======
-            var response = assertThrows(BusinessException.class, () -> candidateProfileService.uploadAvatar(inputId, file));
-            
-
-            //===== ASSERT =======
-
-            //Verifica se foi feita a procura de perfil por userId
-            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
-
-            //Verifica se foi nao feita a procura de usuario apos encontrar profile
-            verify(userRepository, never()).findById(any(UUID.class));
-
-            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
+            //Assegura que mensagem de exception çançada é a correta
+            assertEquals("Não foi encontrado um perfil associado a este usuario", response.getMessage());
 
             //Assegura que nenhuma operação foi feita no banco
             verify(candidateProfileRepository, never()).save(profileArgumentCaptor.capture());
@@ -947,113 +632,14 @@ public class CandidateProfileServiceTest {
             verify(fileStorage, times(1)).deleteQuietly(keyBeforeUpdate);
 
         }
-
-        @Test
-        @DisplayName("Should upload a resume succefully when profile don't exist")
-        void shouldUploadAResumeSuccefullyDontExist(){
-            //===== ARRANGE =======
-            var inputId = userId;
-
-            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
-            when(candidateProfileRepository.saveAndFlush(any(CandidateProfile.class))).thenAnswer(chamado ->{
-                var profileSaved = chamado.getArgument(0);
-                return profileSaved;
-            });
-            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado ->{
-                var profileSaved = chamado.getArgument(0);
-                return profileSaved;
-            });
-
-            doReturn(storedFile).when(fileStorage).store( eq("candidate-resumes/" + inputId),
-                                                            anyString(),
-                                                            any(byte[].class),
-                                                            eq("application/pdf"));
-
-
-            //===== ACT =======
-            var response = candidateProfileService.uploadResume(inputId, file);
-            
-            //===== ASSERT =======
-
-            //Verifica se foi feita a procura de perfil por userId
-            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
-
-            //Verifica se foi feita a procura de usuario apos nao encontrar profile
-            verify(userRepository, times(1)).findById(any(UUID.class));
-
-            //Verifica se save (criação de inicial de profile) foi chamado (TALVEZ ALTERE DEPOIS)
-            verify(candidateProfileRepository, times(1)).save(profileArgumentCaptor.capture());
-
-            //verifica se saveandflush foi chamado e prepara pra pegar valor que seria salvo
-            verify(candidateProfileRepository, times(1)).saveAndFlush(profileArgumentCaptor.capture());
-
-            //Coleta valores capturados respectivamente no: save e no save and flush
-            var listProfileCaptured = profileArgumentCaptor.getAllValues();
-
-            var profileCapturedNormal = listProfileCaptured.get(0);
-            var profileCapturedFlush = listProfileCaptured.get(1);
-
-            //Verifica que profile salvo possui id correto
-            assertEquals(inputId, profileCapturedNormal.getUser().getId());
-
-            //Verifica que o user do profile retornado é o correto
-            assertEquals(inputId, response.userId());
-            
-            //Verifica que o profile retornado é o correto (capturado no flush)
-            assertEquals(profileCapturedFlush.getId(), response.id());
-
-
-            //Verica que credenciail nova de curriculo no banco bate com retornado(flush)
-            assertEquals(profileCapturedFlush.getResumeUrl(), response.resumeUrl());
-
-            //Verfica que credenciais de curriculo foram inseridas corretamente no banco
-            assertNotNull(profileCapturedFlush.getResumeKey());
-            assertNotNull(profileCapturedFlush.getResumeUrl());
-
-            //Assegura que nao nenhum pdf/curriculo vai ser deletado (ja que variavel naquele instante estaria vazia)
-            verify(fileStorage, times(1)).deleteQuietly(keyResumeArgumentCaptor.capture());
-            assertNull(keyResumeArgumentCaptor.getValue());
-
-        }
-    
-        @Test
-        @DisplayName("Should not upload a resume when user don't exist")
-        void shouldNotUploadAResumeWhenUserDontExist(){
-            //===== ARRANGE =======
-            var inputId = userId;
-
-            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.empty()).when(userRepository).findById(inputId);
-
-            //===== ACT =======
-            var response = assertThrows(BusinessException.class, () -> candidateProfileService.uploadResume(inputId, file));
-            
-
-            //===== ASSERT =======
-
-            //Verifica se foi feita a procura de perfil por userId
-            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
-            //Verifica se foi feita a procura de usuario apos nao encontrar profile
-            verify(userRepository, times(1)).findById(any(UUID.class));
-
-            assertEquals("Usuário não encontrado", response.getMessage());
-
-            //Assegura que nenhuma operação foi feita no banco
-            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
-            verify(candidateProfileRepository, never()).saveAndFlush(any(CandidateProfile.class));
-
-        }
         
         @Test
-        @DisplayName("Should not upload a resume when profile don't exist and userRole isn't candidate")
+        @DisplayName("Should not upload a resume when profile don't exist")
         void shouldNotUploadAResumeWhenProfileDontExistAndUserRoleIsntCandidate(){
             //===== ARRANGE =======
             var inputId = userId;
-            user.setRole("COMPANY");
 
             doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
 
             //===== ACT =======
             var response = assertThrows(BusinessException.class, () -> candidateProfileService.uploadResume(inputId, file));
@@ -1062,46 +648,17 @@ public class CandidateProfileServiceTest {
             //===== ASSERT =======
 
             //Verifica se foi feita a procura de perfil por userId
-            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
-            //Verifica se foi feita a procura de usuario apos nao encontrar profile
-            verify(userRepository, times(1)).findById(any(UUID.class));
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            assertEquals(inputId, uuidArgumentCaptor.getValue());
 
-            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
-
-            //Assegura que nenhuma operação foi feita no banco
-            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
-            verify(candidateProfileRepository, never()).saveAndFlush(any(CandidateProfile.class));
-
-        }
-
-        @Test
-        @DisplayName("Should not upload a resume when profile exist but userRole isn't candidate")
-        void shouldNotUploadAResumeWhenProfileExistButUserRoleIsntCandidate(){
-            //===== ARRANGE =======
-            var inputId = userId;
-            user.setRole("COMPANY");
-
-            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
-
-            //===== ACT =======
-            var response = assertThrows(BusinessException.class, () -> candidateProfileService.uploadResume(inputId, file));
-            
-
-            //===== ASSERT =======
-
-            //Verifica se foi feita a procura de perfil por userId
-            verify(candidateProfileRepository, times(1)).findByUserId(any(UUID.class));
-
-            //Verifica se foi nao feita a procura de usuario apos encontrar profile
-            verify(userRepository, never()).findById(any(UUID.class));
-
-            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
+            assertEquals("Não foi encontrado um perfil associado a este usuario", response.getMessage());
 
             //Assegura que nenhuma operação foi feita no banco
             verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
             verify(candidateProfileRepository, never()).saveAndFlush(any(CandidateProfile.class));
 
         }
+
 
         @Test
         @DisplayName("Should not upload a resume when file is null")
@@ -1321,59 +878,11 @@ public class CandidateProfileServiceTest {
         }
 
         @Test
-        @DisplayName("Should add experience sucessfully when profile dont exist")
-        void shouldAddExperienceSucessfullyWhenProfileDontExist(){
-            //===== ARRANGE =======
-            var inputId = userId;
-            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
-            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado ->{
-                return chamado.getArgument(0);
-            });
-            
-            //===== ACT =======
-            var response = candidateProfileService.addExperience(inputId, inputDto);
-
-            //===== ASSERT =======
-
-            //Verifica que find profile foi chamado
-            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
-            //Verifica que id usado como parametro de busca é o correto
-            assertEquals(inputId, uuidArgumentCaptor.getValue());
-            assertEquals(inputId, response.userId());
-
-            verify(candidateProfileRepository, times(2)).save(profileArgumentCaptor.capture());
-            var listSaved = profileArgumentCaptor.getAllValues();
-            var profileFinalSaved = listSaved.get(1);
-
-            //verifique que profile que seria salvo no banco é o correto
-            assertEquals(inputDto.description(), profileFinalSaved.getExperiences().get(0).getDescription());
-            assertEquals(inputDto.companyName(), profileFinalSaved.getExperiences().get(0).getCompanyName());
-            assertEquals(inputDto.role(), profileFinalSaved.getExperiences().get(0).getRole());
-            assertEquals(inputDto.startDate(), profileFinalSaved.getExperiences().get(0).getStartDate());
-            assertEquals(inputDto.endDate(), profileFinalSaved.getExperiences().get(0).getEndDate());
-            assertEquals(inputDto.isCurrent(), profileFinalSaved.getExperiences().get(0).getIsCurrent());
-
-            //Verifica que perfil nao foi encontrado e posteriormente criado
-            verify(userRepository, times(1)).findById(any(UUID.class));
-
-
-            //Verifica se experiencia foi adicionada
-            assertEquals(inputDto.description(), response.experiences().get(0).description());
-            assertEquals(inputDto.companyName(), response.experiences().get(0).companyName());
-            assertEquals(inputDto.role(), response.experiences().get(0).role());
-            assertEquals(inputDto.startDate(), response.experiences().get(0).startDate());
-            assertEquals(inputDto.endDate(), response.experiences().get(0).endDate());
-            assertEquals(inputDto.isCurrent(), response.experiences().get(0).isCurrent());
-        }
-
-        @Test
-        @DisplayName("Should not add experience when profile and user dont exist")
+        @DisplayName("Should not add experience when profile dont exist")
         void shouldNotAddExperienceWhenProfileAndUserDontExist(){
             //===== ARRANGE =======
             var inputId = userId;
             doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.empty()).when(userRepository).findById(inputId);
             
             //===== ACT =======
             var response = assertThrows(BusinessException.class, () -> candidateProfileService.addExperience(inputId, inputDto));
@@ -1385,72 +894,13 @@ public class CandidateProfileServiceTest {
             //Verifica que id usado como parametro de busca é o correto
             assertEquals(inputId, uuidArgumentCaptor.getValue());
 
-            //Verifica que perfil nao foi encontrado
-            verify(userRepository, times(1)).findById(any(UUID.class));
-
             //Assegura que mensagem de excção lançada é a correta
-            assertEquals("Usuário não encontrado", response.getMessage());
+            assertEquals("Não foi encontrado um perfil associado a este usuario", response.getMessage());
 
             //Assegura que nenhuma informação foi salva no banco
             verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
         }
-
-        @Test
-        @DisplayName("Should not add experience when profile don't exist and userRole isn't Candidate")
-        void shouldNotAddExperienceWhenProfileDontExistAndUserRoleIsntCandidate(){
-            //===== ARRANGE =======
-            user.setRole("COMPANY");
-            var inputId = userId;
-            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
-            
-            //===== ACT =======
-            var response = assertThrows(BusinessException.class, () -> candidateProfileService.addExperience(inputId, inputDto));
-
-            //===== ASSERT =======
-
-            //Verifica que find profile foi chamado
-            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
-            //Verifica que id usado como parametro de busca é o correto
-            assertEquals(inputId, uuidArgumentCaptor.getValue());
-
-            //Verifica que perfil nao foi encontrado
-            verify(userRepository, times(1)).findById(any(UUID.class));
-
-            //Assegura que mensagem de excção lançada é a correta
-            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
-
-            //Assegura que nenhuma informação foi salva no banco
-            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
-        }
-
-        @Test
-        @DisplayName("Should not add experience when profile exist but userRole isn't Candidate")
-        void shouldNotAddExperienceWhenProfileExistButUserRoleIsntCandidate(){
-            //===== ARRANGE =======
-            user.setRole("COMPANY");
-            var inputId = userId;
-            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
-            
-            //===== ACT =======
-            var response = assertThrows(BusinessException.class, () -> candidateProfileService.addExperience(inputId, inputDto));
-
-            //===== ASSERT =======
-
-            //Verifica que find profile foi chamado
-            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
-            //Verifica que id usado como parametro de busca é o correto
-            assertEquals(inputId, uuidArgumentCaptor.getValue());
-
-            //Verifica que perfil foi encontrado
-            verify(userRepository, never()).findById(any(UUID.class));
-
-            //Assegura que mensagem de excção lançada é a correta
-            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
-
-            //Assegura que nenhuma informação foi salva no banco
-            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
-        }
+        
     }
 
     @Nested
@@ -1683,64 +1133,13 @@ public class CandidateProfileServiceTest {
         }
 
         @Test
-        @DisplayName("Should add a project successfully when profile don't exist")
-        void shouldAddAProjectSucessfullyWhenProfileDontExist(){
-            //===== ARRANGE =======
-            var inputId = userId;
-            var inputDto = newProject;
-            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.of(user)).when(userRepository).findById(userId);
-            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado ->{
-                return chamado.getArgument(0);
-            });
-            //===== ACT =======
-            var response = candidateProfileService.addProject(inputId, inputDto);
-
-            //===== ASSERt =======
-
-            //Verifica que foi feita a procura de perfil e captura id usado como parametro de busca
-            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
-            //Verifica que foi necessario fazer a busca por usuario e captura id usado como parametro
-            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
-
-            var listOfIds = uuidArgumentCaptor.getAllValues();//index 0 -> id usado na procura por perfil
-                                                              //index 1-> id usado na procura por usuario
-            //verifica que id usado pra busca de perfil bate com o inserido no metodo original
-            assertEquals(inputId, listOfIds.get(0));
-            //Verifica que id usado pra busca de usuario bate com o inserido no metodo original
-            assertEquals(inputId, listOfIds.get(1));
-            
-
-            //Verifica que metodo para salvar alterações foi chamado duas vezes (uma pra cirar o perfil e outra
-            //adicionar projeto) e captura objeto usado como parametro
-            verify(candidateProfileRepository, times(2)).save(profileArgumentCaptor.capture());
-            var profileCaptured = profileArgumentCaptor.getValue();
-
-            //Verifica que objeto que seria salvo é correto
-            assertEquals("API REST de Recrutamento", profileCaptured.getProjects().get(0).getTitle());
-            assertEquals("Sistema de gerenciamento de candidatos e vagas construído com Spring Boot e PostgreSQL", profileCaptured.getProjects().get(0).getDescription());
-            assertEquals("https://github.com/candidato-exemplo/recruitment-api", profileCaptured.getProjects().get(0).getProjectUrl());
-            assertEquals(List.of("Java", "Spring Boot", "PostgreSQL", "Docker"), profileCaptured.getProjects().get(0).getToolsAndSkills());
-
-            //Verifica userId do profile retornado bate com inserido na requisição
-            assertEquals(inputId, response.userId());
-
-            //Verifica que valores retornado em project estao corretos
-            assertEquals("API REST de Recrutamento", response.projects().get(0).title());
-            assertEquals("Sistema de gerenciamento de candidatos e vagas construído com Spring Boot e PostgreSQL", response.projects().get(0).description());
-            assertEquals("https://github.com/candidato-exemplo/recruitment-api", response.projects().get(0).projectUrl());
-            assertEquals(List.of("Java", "Spring Boot", "PostgreSQL", "Docker"), response.projects().get(0).toolsAndSkills());
-        }
-
-        @Test
-        @DisplayName("Should not add a project when profile don't exist and userRole isn't candidate")
+        @DisplayName("Should not add a project when profile don't exist")
         void shouldNotAddAProjectWhenProfileDontExistAndUserRoleIsntCandidate(){
             //===== ARRANGE =======
             var inputId = userId;
             var inputDto = newProject;
             user.setRole("COMPANY");
             doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.of(user)).when(userRepository).findById(userId);
 
             //===== ACT =======
             var response = assertThrows(BusinessException.class, ()-> candidateProfileService.addProject(inputId, inputDto));
@@ -1749,70 +1148,12 @@ public class CandidateProfileServiceTest {
 
             //Verifica que foi feita a procura de perfil e captura id usado como parametro de busca
             verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
-            //Verifica que foi necessario fazer a busca por usuario e captura id usado como parametro
-            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
-
-            var listOfIds = uuidArgumentCaptor.getAllValues();//index 0 -> id usado na procura por perfil
-                                                              //index 1-> id usado na procura por usuario
-            //verifica que id usado pra busca de perfil bate com o inserido no metodo original
-            assertEquals(inputId, listOfIds.get(0));
-            //Verifica que id usado pra busca de usuario bate com o inserido no metodo original
-            assertEquals(inputId, listOfIds.get(1));
-            
-            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
-        }
-
-        @Test
-        @DisplayName("Should not add a project when profile exist but userRole isn't candidate")
-        void shouldNotAddAProjectWhenProfileExistButUserRoleIsntCandidate(){
-            //===== ARRANGE =======
-            var inputId = userId;
-            var inputDto = newProject;
-            user.setRole("Company");
-            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
-
-            //===== ACT =======
-            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.addProject(inputId, inputDto));
-
-            //===== ASSERT =======
-
-            //Verifica que foi feita a procura de perfil e captura id usado como parametro de busca
-            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
-            //Verifica que profile foi encontrado e portando nao foi necessario fazer a busca de usuario
-            verify(userRepository, never()).findById(any(UUID.class));
-            //verifica que id usado pra busca de perfil bate com o inserido no metodo original
+        
+            //verifica que em busca por perfil foi usado o mesmo id do input
             assertEquals(inputId, uuidArgumentCaptor.getValue());
             
-            assertEquals("Apenas candidatos podem acessar o perfil de candidato", response.getMessage());
-        }
-
-        @Test
-        @DisplayName("Should not add a project when profile and user don't exist")
-        void shouldNotAddAProjectWhenProfileAndUserDont(){
-            //===== ARRANGE =======
-            var inputId = userId;
-            var inputDto = newProject;
-            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
-            doReturn(Optional.empty()).when(userRepository).findById(inputId);
-
-            //===== ACT =======
-            var response = assertThrows(BusinessException.class, ()-> candidateProfileService.addProject(inputId, inputDto));
-
-            //===== ASSERT =======
-
-            //Verifica que foi feita a procura de perfil e captura id usado como parametro de busca
-            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
-            //Verifica que foi necessario fazer a busca por usuario e captura id usado como parametro
-            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
-
-            var listOfIds = uuidArgumentCaptor.getAllValues();//index 0 -> id usado na procura por perfil
-                                                              //index 1-> id usado na procura por usuario
-            //verifica que id usado pra busca de perfil bate com o inserido no metodo original
-            assertEquals(inputId, listOfIds.get(0));
-            //Verifica que id usado pra busca de usuario bate com o inserido no metodo original
-            assertEquals(inputId, listOfIds.get(1));
-            
-            assertEquals("Usuário não encontrado", response.getMessage());
+            //Verifica se mensagem de excessão lançada é a correta
+            assertEquals("Não foi encontrado um perfil associado a este usuario", response.getMessage());
         }
     }
 
