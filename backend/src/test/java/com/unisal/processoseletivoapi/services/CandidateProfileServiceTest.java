@@ -35,6 +35,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.unisal.processoseletivoapi.candidate.dto.CreateExperienceDto;
+import com.unisal.processoseletivoapi.candidate.dto.CreateProfileDto;
 import com.unisal.processoseletivoapi.candidate.dto.CreateProjectDto;
 import com.unisal.processoseletivoapi.candidate.dto.UpdateCandidateProfileDto;
 import com.unisal.processoseletivoapi.candidate.entity.CandidateExperience;
@@ -151,6 +152,186 @@ public class CandidateProfileServiceTest {
     }
 
     @Nested
+    class createProfileByUserId{
+        private CreateProfileDto dto;
+
+        @BeforeEach
+        void setUp(){
+            //dto usando nos testes para criação de perfis
+            dto = new CreateProfileDto(
+                "Desenvolvedor Backend Java",
+                "Estudante de Engenharia de Computação interessado em desenvolvimento backend.",
+                "(12) 99999-9999",
+                "Lorena",
+                "SP",
+                "UNISAL",
+                "Engenharia de Computação",
+                4,
+                2028,
+                "https://www.linkedin.com/in/exemplo",
+                "https://github.com/exemplo",
+                "https://meuportfolio.com",
+                List.of("Java", "Spring Boot", "SQL"),
+                List.of(),
+                List.of()
+            );
+        }
+
+        @Test
+        @DisplayName("Should create a profile successfully")
+        void shouldCreateAProfileSuccessfully(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var inputDto = dto;
+
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
+            when(candidateProfileRepository.save(any(CandidateProfile.class))).thenAnswer(chamado ->{
+                return chamado.getArgument(0);
+            });
+            //===== ACT =======
+            var response = candidateProfileService.createProfile(inputId, inputDto);
+
+            //===== ASSERT =======
+
+            //Verifica se foi feita a busca de perfil duplicado, de usuario e se houve uma chamada para salvar as informações
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
+            verify(candidateProfileRepository, times(1)).save(profileArgumentCaptor.capture());
+
+            //coleta os valores inseridos nas pesquisas
+            var listOfIds = uuidArgumentCaptor.getAllValues();//index 0 -> valor inserido na verificação de perfil duplicado
+                                                            //index 1 -> valor inserido na pesquisa por usuarios
+            //verifica se valores utilizados para pesquisa batem com o inserido no metodo
+            assertEquals(inputId, listOfIds.get(0));
+            assertEquals(inputId, listOfIds.get(1));
+
+            //Verfica se iformações que seriam salvas no banco batem com o esperado
+            var profileCaptured = profileArgumentCaptor.getValue();
+            assertEquals("Desenvolvedor Backend Java", profileCaptured.getHeadline());
+            assertEquals("Estudante de Engenharia de Computação interessado em desenvolvimento backend.", profileCaptured.getSummary());
+            assertEquals("(12) 99999-9999", profileCaptured.getPhone());
+            assertEquals("Lorena", profileCaptured.getCity());
+            assertEquals("SP", profileCaptured.getState());
+            assertEquals("UNISAL", profileCaptured.getInstitution());
+            assertEquals("Engenharia de Computação", profileCaptured.getCourse());
+            assertEquals(4, profileCaptured.getCurrentSemester());
+            assertEquals(2028, profileCaptured.getExpectedGraduationYear());
+            assertEquals("https://www.linkedin.com/in/exemplo", profileCaptured.getLinkedinUrl());
+            assertEquals("https://github.com/exemplo", profileCaptured.getGithubUrl());
+            assertEquals("https://meuportfolio.com", profileCaptured.getPortfolioUrl());
+            assertEquals(List.of("Java", "Spring Boot", "SQL"), profileCaptured.getSkills());
+            assertEquals(Collections.emptyList(), profileCaptured.getExperiences());
+            assertEquals(Collections.emptyList(), profileCaptured.getProjects());
+
+            //Verifica que o response bate com o inserido
+            assertEquals("Desenvolvedor Backend Java", response.headline());
+            assertEquals("Estudante de Engenharia de Computação interessado em desenvolvimento backend.", response.summary());
+            assertEquals("(12) 99999-9999", response.phone());
+            assertEquals("Lorena", response.city());
+            assertEquals("SP", response.state());
+            assertEquals("UNISAL", response.institution());
+            assertEquals("Engenharia de Computação", response.course());
+            assertEquals(4, response.currentSemester());
+            assertEquals(2028, response.expectedGraduationYear());
+            assertEquals("https://www.linkedin.com/in/exemplo", response.linkedinUrl());
+            assertEquals("https://github.com/exemplo", response.githubUrl());
+            assertEquals("https://meuportfolio.com", response.portfolioUrl());
+            assertEquals(List.of("Java", "Spring Boot", "SQL"), response.skills());
+            assertEquals(Collections.emptyList(), response.experiences());
+            assertEquals(Collections.emptyList(), response.projects());
+        }
+
+        @Test
+        @DisplayName ("Should not create a profile when it already exist")
+        void shouldCreateAProfileWhenItAlreadyExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var inputDto = dto;
+
+            doReturn(Optional.of(profile)).when(candidateProfileRepository).findByUserId(inputId);
+
+            //===== ACT =======
+            var response = assertThrows( BusinessException.class, ()->candidateProfileService.createProfile(inputId, inputDto));
+
+            //===== ASSERT =======
+
+            //Verifica que assim que profile foi chaamado a excessao foi lançada e nao houve outras pesquisas
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            verify(userRepository, never()).findById(any(UUID.class));
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+
+            //Assegura que id usado pra busca de perfil é mesmo inserido no metodo
+            assertEquals(uuidArgumentCaptor.getValue(), inputId);
+
+            assertEquals("Já existe um perfil associado a este usuario", response.getMessage());
+        }
+
+
+        @Test
+        @DisplayName ("Should not create a profile when user don't exist")
+        void shouldCreateAProfileWhenUserDontExist(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var inputDto = dto;
+
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.empty()).when(userRepository).findById(inputId);
+
+
+            //===== ACT =======
+            var response = assertThrows( BusinessException.class, ()->candidateProfileService.createProfile(inputId, inputDto));
+
+            //===== ASSERT =======
+
+            //Verifica que assim que a procura de user foi chaamado a excessao foi lançada e nao houve outras opreções
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+
+            var listOfIds = uuidArgumentCaptor.getAllValues(); //index 0 -> usado na busca por perfis && index 1 -> usado na busca por usuario
+            //Assegura que id usado pra busca de perfil é mesmo inserido no metodo
+            assertEquals(listOfIds.get(0), inputId);
+            //Assegura que id usado pra busca de usuario é mesmo inserido no metodo
+            assertEquals(listOfIds.get(1), inputId);
+
+            assertEquals("Não existe um usuario associado a este identificador", response.getMessage());
+        }
+
+
+        @Test
+        @DisplayName ("Should not create a profile when user role isn't CANDIDATE")
+        void shouldCreateAProfileWhenUserRoleIsntCandidate(){
+            //===== ARRANGE =======
+            var inputId = userId;
+            var inputDto = dto;
+            user.setRole("COMPANY");
+
+            doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
+            doReturn(Optional.of(user)).when(userRepository).findById(inputId);
+
+
+            //===== ACT =======
+            var response = assertThrows( BusinessException.class, ()->candidateProfileService.createProfile(inputId, inputDto));
+
+            //===== ASSERT =======
+
+            //Verifica que nao houve outras opereções alem das anterios a compração de role
+            verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+            verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
+            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
+
+            var listOfIds = uuidArgumentCaptor.getAllValues(); //index 0 -> usado na busca por perfis && index 1 -> usado na busca por usuario
+            //Assegura que id usado pra busca de perfil é mesmo inserido no metodo
+            assertEquals(listOfIds.get(0), inputId);
+            //Assegura que id usado pra busca de usuario é mesmo inserido no metodo
+            assertEquals(listOfIds.get(1), inputId);
+
+            assertEquals("Apenas candidatos podem criar perfis", response.getMessage());
+        }
+    }
+
+    @Nested
     class FindProfileByUserId {
 
         @Test
@@ -172,8 +353,6 @@ public class CandidateProfileServiceTest {
             assertEquals(input, idCaptured);
             assertEquals(idCaptured, response.userId());
 
-            //Garante que o usuario foi encontrado e nao criado
-            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
         }
 
 
@@ -195,6 +374,7 @@ public class CandidateProfileServiceTest {
 
             //Verifica quantas vezes o metodo de procurar id foi chamado e captura o id inserido como valor
             verify(candidateProfileRepository, times(1)).findByUserId(uuidArgumentCaptor.capture());
+
             //Verifica quantas vezes foi procurado um usuario com aquele id e se foi chamado apenas uma vez
             verify(userRepository, times(1)).findById(uuidArgumentCaptor.capture());
 
@@ -205,9 +385,6 @@ public class CandidateProfileServiceTest {
 
             //Verifica se o id utilizado na busca por perfil é o mesmo utilizado na busca por usuario
             assertEquals(idCaptured1, idCaptured2);
-
-            //Verifica que nenhum perfil novo foi criado
-            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
         }
 
         @Test
@@ -233,9 +410,6 @@ public class CandidateProfileServiceTest {
 
             //Verifcia se o id capturado é igual ao inserido na requisição
             assertEquals(idCaptured, input);
-
-            //Verifica que nenhum perfil novo foi criado
-            verify(candidateProfileRepository, never()).save(any(CandidateProfile.class));
         }
     }
 
@@ -1134,11 +1308,10 @@ public class CandidateProfileServiceTest {
 
         @Test
         @DisplayName("Should not add a project when profile don't exist")
-        void shouldNotAddAProjectWhenProfileDontExistAndUserRoleIsntCandidate(){
+        void shouldNotAddAProjectWhenProfileDontExist(){
             //===== ARRANGE =======
             var inputId = userId;
             var inputDto = newProject;
-            user.setRole("COMPANY");
             doReturn(Optional.empty()).when(candidateProfileRepository).findByUserId(inputId);
 
             //===== ACT =======
