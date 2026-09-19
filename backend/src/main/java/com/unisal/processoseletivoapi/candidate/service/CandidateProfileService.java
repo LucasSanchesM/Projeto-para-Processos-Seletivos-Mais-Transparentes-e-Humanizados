@@ -14,8 +14,11 @@ import com.unisal.processoseletivoapi.candidate.dto.CandidateExperienceDto;
 import com.unisal.processoseletivoapi.candidate.dto.CandidateProfileDto;
 import com.unisal.processoseletivoapi.candidate.dto.CandidateProjectDto;
 import com.unisal.processoseletivoapi.candidate.dto.CreateExperienceDto;
+import com.unisal.processoseletivoapi.candidate.dto.CreateProfileDto;
 import com.unisal.processoseletivoapi.candidate.dto.CreateProjectDto;
+import com.unisal.processoseletivoapi.candidate.dto.ImageFormat;
 import com.unisal.processoseletivoapi.candidate.dto.UpdateCandidateProfileDto;
+import com.unisal.processoseletivoapi.candidate.dto.ValidateImageContent;
 import com.unisal.processoseletivoapi.candidate.entity.CandidateExperience;
 import com.unisal.processoseletivoapi.candidate.entity.CandidateProfile;
 import com.unisal.processoseletivoapi.candidate.entity.CandidateProject;
@@ -26,7 +29,6 @@ import com.unisal.processoseletivoapi.candidate.storage.FileStorage;
 import com.unisal.processoseletivoapi.candidate.storage.StoredFile;
 import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.user.UserRepository;
-import com.unisal.processoseletivoapi.user.entity.User;
 
 @Service
 public class CandidateProfileService {
@@ -53,41 +55,110 @@ public class CandidateProfileService {
     }
 
     @Transactional
-    public CandidateProfileDto getProfileByUserId(UUID userId) {
-        CandidateProfile profile = findOrCreateProfile(userId);
-        return toDto(profile);
+    public CandidateProfileDto createProfile(UUID userId, CreateProfileDto dto) {
+        if (candidateProfileRepository.findByUserId(userId).isPresent()) {
+            throw new BusinessException(HttpStatus.CONFLICT, "Já existe um perfil associado a este usuario");
+        }
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Não existe um usuario associado a este identificador"));
+        if (!"CANDIDATE".equals(user.getRole())) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "Apenas candidatos podem criar perfis");
+        }
+        
+        CandidateProfile profile = new CandidateProfile(user);
+        profile.setHeadline(dto.headline());
+        profile.setSummary(dto.summary());
+        profile.setPhone(dto.phone());
+        profile.setCity(dto.city());
+        profile.setState(dto.state());
+        profile.setInstitution(dto.institution());
+        profile.setCourse(dto.course());
+        profile.setCurrentSemester(dto.currentSemester());
+        profile.setExpectedGraduationYear(dto.expectedGraduationYear());
+        profile.setLinkedinUrl(dto.linkedinUrl());
+        profile.setGithubUrl(dto.githubUrl());
+        profile.setPortfolioUrl(dto.portfolioUrl());
+        profile.setSkills(dto.skills() != null ? new ArrayList<>(dto.skills()) : new ArrayList<>());
+
+        if (dto.experiences() != null) {
+            dto.experiences().forEach(experiencia -> profile.getExperiences().add(new CandidateExperience(profile,
+                    experiencia.companyName(),
+                    experiencia.role(),
+                    experiencia.description(),
+                    experiencia.startDate(),
+                    experiencia.endDate(),
+                    experiencia.isCurrent()
+            )));
+        }
+
+        if (dto.projects() != null) {
+            dto.projects().forEach(project -> profile.getProjects().add(new CandidateProject(profile,
+                    project.title(),
+                    project.description(),
+                    project.projectUrl(),
+                    project.toolsAndSkills()
+            )));
+        }
+
+        return toDto(candidateProfileRepository.save(profile));
+    }
+
+    @Transactional
+    public CandidateProfileDto findProfileByUserId(UUID userId) {
+        var profile = candidateProfileRepository.findByUserId(userId);
+        if (profile.isEmpty()) {
+            if (userRepository.findById(userId).isEmpty()) {
+                throw new BusinessException(HttpStatus.NOT_FOUND, "Este usuario não existe");
+            } else {
+                throw new BusinessException(HttpStatus.NOT_FOUND, "Nenhum perfil associado a este id");
+            }
+        }
+        return toDto(profile.get());
     }
 
     @Transactional
     public CandidateProfileDto updateProfile(UUID userId, UpdateCandidateProfileDto dto) {
-        CandidateProfile profile = findOrCreateProfile(userId);
+        var profile = getProfileOrThrow(userId);
 
-        if (dto.headline() != null)
+        if (dto.headline() != null) {
             profile.setHeadline(dto.headline());
-        if (dto.summary() != null)
+        }
+        if (dto.summary() != null) {
             profile.setSummary(dto.summary());
-        if (dto.phone() != null)
+        }
+        if (dto.phone() != null) {
             profile.setPhone(dto.phone());
-        if (dto.city() != null)
+        }
+        if (dto.city() != null) {
             profile.setCity(dto.city());
-        if (dto.state() != null)
+        }
+        if (dto.state() != null) {
             profile.setState(dto.state());
-        if (dto.institution() != null)
+        }
+        if (dto.institution() != null) {
             profile.setInstitution(dto.institution());
-        if (dto.course() != null)
+        }
+        if (dto.course() != null) {
             profile.setCourse(dto.course());
-        if (dto.currentSemester() != null)
+        }
+        if (dto.currentSemester() != null) {
             profile.setCurrentSemester(dto.currentSemester());
-        if (dto.expectedGraduationYear() != null)
+        }
+        if (dto.expectedGraduationYear() != null) {
             profile.setExpectedGraduationYear(dto.expectedGraduationYear());
-        if (dto.linkedinUrl() != null)
+        }
+        if (dto.linkedinUrl() != null) {
             profile.setLinkedinUrl(dto.linkedinUrl());
-        if (dto.githubUrl() != null)
+        }
+        if (dto.githubUrl() != null) {
             profile.setGithubUrl(dto.githubUrl());
-        if (dto.portfolioUrl() != null)
+        }
+        if (dto.portfolioUrl() != null) {
             profile.setPortfolioUrl(dto.portfolioUrl());
-        if (dto.skills() != null)
+        }
+        if (dto.skills() != null) {
             profile.setSkills(new ArrayList<>(dto.skills()));
+        }
 
         CandidateProfile saved = candidateProfileRepository.save(profile);
         return toDto(saved);
@@ -95,15 +166,15 @@ public class CandidateProfileService {
 
     @Transactional
     public CandidateProfileDto uploadAvatar(UUID userId, MultipartFile file) {
-        CandidateProfile profile = findOrCreateProfile(userId);
-        byte[] content = readAndValidateAvatar(file);
-        ImageFormat format = detectImageFormat(content);
+        var profile = getProfileOrThrow(userId);
+
+        var validatedImage = readAndValidateAvatar(file);
 
         StoredFile uploaded = fileStorage.store(
                 "candidate-avatars/" + userId,
-                UUID.randomUUID() + "." + format.extension(),
-                content,
-                format.contentType());
+                UUID.randomUUID() + "." + validatedImage.format().extension(),
+                validatedImage.content(),
+                validatedImage.format().contentType());
 
         String previousKey = profile.getProfileImageKey();
         profile.setProfileImageKey(uploaded.key());
@@ -121,7 +192,8 @@ public class CandidateProfileService {
 
     @Transactional
     public CandidateProfileDto uploadResume(UUID userId, MultipartFile file) {
-        CandidateProfile profile = findOrCreateProfile(userId);
+        var profile = getProfileOrThrow(userId);
+
         byte[] content = readAndValidateResume(file);
 
         StoredFile uploaded = fileStorage.store(
@@ -146,7 +218,7 @@ public class CandidateProfileService {
 
     @Transactional
     public CandidateProfileDto addExperience(UUID userId, CreateExperienceDto dto) {
-        CandidateProfile profile = findOrCreateProfile(userId);
+        var profile = getProfileOrThrow(userId);
 
         CandidateExperience exp = new CandidateExperience(
                 profile,
@@ -166,7 +238,7 @@ public class CandidateProfileService {
     public CandidateProfileDto updateExperience(UUID userId, UUID experienceId, CreateExperienceDto dto) {
         CandidateExperience exp = candidateExperienceRepository.findByIdAndCandidateProfileUserId(experienceId, userId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
-                        "Experiência não encontrada para este usuário"));
+                "Experiência não encontrada para este usuário"));
 
         exp.setCompanyName(dto.companyName());
         exp.setRole(dto.role());
@@ -176,14 +248,14 @@ public class CandidateProfileService {
         exp.setIsCurrent(dto.isCurrent() != null ? dto.isCurrent() : false);
 
         candidateExperienceRepository.save(exp);
-        return getProfileByUserId(userId);
+        return findProfileByUserId(userId);
     }
 
     @Transactional
     public CandidateProfileDto deleteExperience(UUID userId, UUID experienceId) {
         CandidateExperience exp = candidateExperienceRepository.findByIdAndCandidateProfileUserId(experienceId, userId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
-                        "Experiência não encontrada para este usuário"));
+                "Experiência não encontrada para este usuário"));
 
         CandidateProfile profile = exp.getCandidateProfile();
         profile.getExperiences().remove(exp);
@@ -194,7 +266,7 @@ public class CandidateProfileService {
 
     @Transactional
     public CandidateProfileDto addProject(UUID userId, CreateProjectDto dto) {
-        CandidateProfile profile = findOrCreateProfile(userId);
+        var profile = getProfileOrThrow(userId);
 
         CandidateProject project = new CandidateProject(
                 profile,
@@ -222,7 +294,7 @@ public class CandidateProfileService {
         }
 
         candidateProjectRepository.save(project);
-        return getProfileByUserId(userId);
+        return findProfileByUserId(userId);
     }
 
     @Transactional
@@ -238,27 +310,12 @@ public class CandidateProfileService {
         return toDto(saved);
     }
 
-    private CandidateProfile findOrCreateProfile(UUID userId) {
-        CandidateProfile profile = candidateProfileRepository.findByUserId(userId)
-                .orElseGet(() -> {
-                    User user = userRepository.findById(userId)
-                            .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
-                    if (!"CANDIDATE".equals(user.getRole())) {
-                        throw new BusinessException(HttpStatus.FORBIDDEN,
-                                "Apenas candidatos podem acessar o perfil de candidato");
-                    }
-                    CandidateProfile newProfile = new CandidateProfile(user);
-                    return candidateProfileRepository.save(newProfile);
-                });
-
-        if (!"CANDIDATE".equals(profile.getUser().getRole())) {
-            throw new BusinessException(HttpStatus.FORBIDDEN,
-                    "Apenas candidatos podem acessar o perfil de candidato");
-        }
-        return profile;
+    private CandidateProfile getProfileOrThrow(UUID userId) {
+        return candidateProfileRepository.findByUserId(userId)
+                        .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Não foi encontrado um perfil associado a este usuario"));
     }
 
-    private byte[] readAndValidateAvatar(MultipartFile file) {
+    private ValidateImageContent readAndValidateAvatar(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "Selecione uma imagem de perfil");
         }
@@ -268,8 +325,8 @@ public class CandidateProfileService {
         }
         try {
             byte[] content = file.getBytes();
-            detectImageFormat(content);
-            return content;
+            var format = detectImageFormat(content);
+            return new ValidateImageContent(content, format);
         } catch (IOException exception) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "Não foi possível ler a imagem enviada");
         }
@@ -347,30 +404,27 @@ public class CandidateProfileService {
                 && content[11] == 'P';
     }
 
-    private record ImageFormat(String contentType, String extension) {
-    }
-
     private CandidateProfileDto toDto(CandidateProfile profile) {
         var expDtos = profile.getExperiences().stream()
                 .map(exp -> new CandidateExperienceDto(
-                        exp.getId(),
-                        exp.getCompanyName(),
-                        exp.getRole(),
-                        exp.getDescription(),
-                        exp.getStartDate(),
-                        exp.getEndDate(),
-                        exp.getIsCurrent(),
-                        exp.getCreatedAt()))
+                exp.getId(),
+                exp.getCompanyName(),
+                exp.getRole(),
+                exp.getDescription(),
+                exp.getStartDate(),
+                exp.getEndDate(),
+                exp.getIsCurrent(),
+                exp.getCreatedAt()))
                 .collect(Collectors.toList());
 
         var projDtos = profile.getProjects().stream()
                 .map(proj -> new CandidateProjectDto(
-                        proj.getId(),
-                        proj.getTitle(),
-                        proj.getDescription(),
-                        proj.getProjectUrl(),
-                        proj.getToolsAndSkills(),
-                        proj.getCreatedAt()))
+                proj.getId(),
+                proj.getTitle(),
+                proj.getDescription(),
+                proj.getProjectUrl(),
+                proj.getToolsAndSkills(),
+                proj.getCreatedAt()))
                 .collect(Collectors.toList());
 
         return new CandidateProfileDto(

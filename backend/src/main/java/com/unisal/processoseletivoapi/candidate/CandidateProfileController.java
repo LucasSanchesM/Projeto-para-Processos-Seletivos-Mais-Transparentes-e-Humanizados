@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.unisal.processoseletivoapi.candidate.dto.CandidateProfileDto;
 import com.unisal.processoseletivoapi.candidate.dto.CreateExperienceDto;
+import com.unisal.processoseletivoapi.candidate.dto.CreateProfileDto;
 import com.unisal.processoseletivoapi.candidate.dto.CreateProjectDto;
 import com.unisal.processoseletivoapi.candidate.dto.UpdateCandidateProfileDto;
 import com.unisal.processoseletivoapi.candidate.service.CandidateProfileService;
@@ -36,16 +37,24 @@ public class CandidateProfileController {
         this.candidateProfileService = candidateProfileService;
     }
 
+    @PostMapping("/me")
+    public ResponseEntity<CandidateProfileDto> createMyProfile( @AuthenticationPrincipal Jwt jwt,
+                                                                @Valid @RequestBody CreateProfileDto dto) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        var response = candidateProfileService.createProfile(userId, dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @GetMapping("/me")
     public ResponseEntity<CandidateProfileDto> getMyProfile(@AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getSubject());
-        var response = candidateProfileService.getProfileByUserId(userId);
+        var response = candidateProfileService.findProfileByUserId(userId);
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/me")
-    public ResponseEntity<CandidateProfileDto> updateMyProfile(@AuthenticationPrincipal Jwt jwt,
-                                                               @Valid @RequestBody UpdateCandidateProfileDto dto) {
+    public ResponseEntity<CandidateProfileDto> updateMyProfile( @AuthenticationPrincipal Jwt jwt,
+                                                                @Valid @RequestBody UpdateCandidateProfileDto dto) {
         UUID userId = UUID.fromString(jwt.getSubject());
         var response = candidateProfileService.updateProfile(userId, dto);
         return ResponseEntity.ok(response);
@@ -69,7 +78,7 @@ public class CandidateProfileController {
 
     @PostMapping("/me/experiences")
     public ResponseEntity<CandidateProfileDto> addExperience(@AuthenticationPrincipal Jwt jwt,
-                                                              @Valid @RequestBody CreateExperienceDto dto) {
+                                                            @Valid @RequestBody CreateExperienceDto dto) {
         UUID userId = UUID.fromString(jwt.getSubject());
         var response = candidateProfileService.addExperience(userId, dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -77,8 +86,8 @@ public class CandidateProfileController {
 
     @PutMapping("/me/experiences/{id}")
     public ResponseEntity<CandidateProfileDto> updateExperience(@AuthenticationPrincipal Jwt jwt,
-                                                                 @PathVariable("id") UUID experienceId,
-                                                                 @Valid @RequestBody CreateExperienceDto dto) {
+                                                                @PathVariable("id") UUID experienceId,
+                                                                @Valid @RequestBody CreateExperienceDto dto) {
         UUID userId = UUID.fromString(jwt.getSubject());
         var response = candidateProfileService.updateExperience(userId, experienceId, dto);
         return ResponseEntity.ok(response);
@@ -86,15 +95,15 @@ public class CandidateProfileController {
 
     @DeleteMapping("/me/experiences/{id}")
     public ResponseEntity<CandidateProfileDto> deleteExperience(@AuthenticationPrincipal Jwt jwt,
-                                                                 @PathVariable("id") UUID experienceId) {
+                                                                @PathVariable("id") UUID experienceId) {
         UUID userId = UUID.fromString(jwt.getSubject());
         var response = candidateProfileService.deleteExperience(userId, experienceId);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/me/projects")
-    public ResponseEntity<CandidateProfileDto> addProject(@AuthenticationPrincipal Jwt jwt,
-                                                           @Valid @RequestBody CreateProjectDto dto) {
+    public ResponseEntity<CandidateProfileDto> addProject( @AuthenticationPrincipal Jwt jwt,
+                                                        @Valid @RequestBody CreateProjectDto dto) {
         UUID userId = UUID.fromString(jwt.getSubject());
         var response = candidateProfileService.addProject(userId, dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -102,8 +111,8 @@ public class CandidateProfileController {
 
     @PutMapping("/me/projects/{id}")
     public ResponseEntity<CandidateProfileDto> updateProject(@AuthenticationPrincipal Jwt jwt,
-                                                              @PathVariable("id") UUID projectId,
-                                                              @Valid @RequestBody CreateProjectDto dto) {
+                                                            @PathVariable("id") UUID projectId,
+                                                            @Valid @RequestBody CreateProjectDto dto) {
         UUID userId = UUID.fromString(jwt.getSubject());
         var response = candidateProfileService.updateProject(userId, projectId, dto);
         return ResponseEntity.ok(response);
@@ -111,7 +120,7 @@ public class CandidateProfileController {
 
     @DeleteMapping("/me/projects/{id}")
     public ResponseEntity<CandidateProfileDto> deleteProject(@AuthenticationPrincipal Jwt jwt,
-                                                              @PathVariable("id") UUID projectId) {
+                                                            @PathVariable("id") UUID projectId) {
         UUID userId = UUID.fromString(jwt.getSubject());
         var response = candidateProfileService.deleteProject(userId, projectId);
         return ResponseEntity.ok(response);
@@ -119,7 +128,7 @@ public class CandidateProfileController {
 
     @GetMapping("/{userId}")
     public ResponseEntity<CandidateProfileDto> getProfileByUserId(@PathVariable("userId") UUID userId) {
-        var response = candidateProfileService.getProfileByUserId(userId);
+        var response = candidateProfileService.findProfileByUserId(userId);
         return ResponseEntity.ok(response);
     }
 }
