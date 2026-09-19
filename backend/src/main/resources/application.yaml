@@ -10,7 +10,7 @@ spring:
   config:
     import: "optional:file:./.env[.properties]"
   datasource:
-    url: jdbc:postgresql://localhost:5433/bancoDeDados
+    url: jdbc:postgresql://postgres:5432/bancoDeDados
     username: user
     password: "1234"
     driver-class-name: org.postgresql.Driver
@@ -26,7 +26,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   rabbitmq:
-    host: localhost
+    host: rabbitmq
     port: 5672
     username: admin
     password: "1234"

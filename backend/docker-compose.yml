@@ -1,5 +1,13 @@
 
 services:
+
+  api:
+    image: selecta-api
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - rabbitmq
   rabbitmq:
     image: rabbitmq:4-management
     container_name: rabbitmq
