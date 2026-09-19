@@ -3,6 +3,7 @@ package com.unisal.processoseletivoapi.company;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,24 +29,28 @@ public class CompanyProfileController {
         this.companyProfileService = companyProfileService;
     }
 
+
     @GetMapping("/me")
+    @PreAuthorize("hasAuthority('COMPANY')")
     public ResponseEntity<CompanyProfileDto> getMyProfile(@AuthenticationPrincipal Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getSubject());
-        var response = companyProfileService.getProfileByUserId(userId);
+        var response = companyProfileService.findProfileByUserId(userId);
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/me")
+    @PreAuthorize("hasAuthority('COMPANY')")
     public ResponseEntity<CompanyProfileDto> updateMyProfile(@AuthenticationPrincipal Jwt jwt,
-                                                             @Valid @RequestBody UpdateCompanyProfileDto dto) {
+                                                            @Valid @RequestBody UpdateCompanyProfileDto dto) {
         UUID userId = UUID.fromString(jwt.getSubject());
         var response = companyProfileService.updateProfile(userId, dto);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{userId}")
+    @PreAuthorize("hasAuthority('COMPANY')")
     public ResponseEntity<CompanyProfileDto> getCompanyProfileByUserId(@PathVariable("userId") UUID userId) {
-        var response = companyProfileService.getProfileByUserId(userId);
+        var response = companyProfileService.findProfileByUserId(userId);
         return ResponseEntity.ok(response);
     }
 }
