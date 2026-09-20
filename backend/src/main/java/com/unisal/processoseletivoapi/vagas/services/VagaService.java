@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.unisal.processoseletivoapi.company.entity.CompanyProfile;
 import com.unisal.processoseletivoapi.company.repository.CompanyProfileRepository;
 import com.unisal.processoseletivoapi.exception.BusinessException;
+import com.unisal.processoseletivoapi.geo.GeoCodingService;
 import com.unisal.processoseletivoapi.vagas.VagaRepository;
 import com.unisal.processoseletivoapi.vagas.VagaRole;
 import com.unisal.processoseletivoapi.vagas.VagaSpecification;

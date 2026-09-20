@@ -13,6 +13,7 @@ import com.unisal.processoseletivoapi.auth.dtos.CompanyRegistrationDto;
 import com.unisal.processoseletivoapi.company.entity.CompanyProfile;
 import com.unisal.processoseletivoapi.company.repository.CompanyProfileRepository;
 import com.unisal.processoseletivoapi.exception.BusinessException;
+import com.unisal.processoseletivoapi.geo.GeoCodingService;
 import com.unisal.processoseletivoapi.mensageria.dto.EmailSendRequest;
 import com.unisal.processoseletivoapi.user.UserRepository;
 import com.unisal.processoseletivoapi.user.UserRole;
@@ -28,18 +29,21 @@ public class CompanyRegistrationService {
     private final VerificationCodeService verificationCodeService;
     private final RabbitTemplate rabbitTemplate;
     private final SecureRandom secureRandom = new SecureRandom();
+    private final GeoCodingService geoCodingService;
 
-    public CompanyRegistrationService(
-            UserRepository userRepository,
-            CompanyProfileRepository companyProfileRepository,
-            BCryptPasswordEncoder passwordEncoder,
-            VerificationCodeService verificationCodeService,
-            RabbitTemplate rabbitTemplate) {
+
+    
+
+    public CompanyRegistrationService(UserRepository userRepository, CompanyProfileRepository companyProfileRepository,
+            BCryptPasswordEncoder passwordEncoder, VerificationCodeService verificationCodeService,
+            RabbitTemplate rabbitTemplate,
+            GeoCodingService geoCodingService) {
         this.userRepository = userRepository;
         this.companyProfileRepository = companyProfileRepository;
         this.passwordEncoder = passwordEncoder;
         this.verificationCodeService = verificationCodeService;
         this.rabbitTemplate = rabbitTemplate;
+        this.geoCodingService = geoCodingService;
     }
 
     @Transactional
@@ -55,6 +59,8 @@ public class CompanyRegistrationService {
             throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, "CNPJ já está cadastrado");
         }
 
+        var endereco = geoCodingService.retornarEndereco(dto.latitude(), dto.longitude());
+
         User user = new User();
         user.setName(dto.responsibleName().trim());
         user.setEmail(email);
@@ -62,13 +68,14 @@ public class CompanyRegistrationService {
         user.setRole(UserRole.COMPANY.name());
         user.setActive(false);
         User savedUser = userRepository.save(user);
-
         CompanyProfile profile = new CompanyProfile(savedUser, dto.companyName().trim());
         profile.setCnpj(cnpj);
         profile.setIndustry(dto.industry().trim());
         profile.setWebsite(blankToNull(dto.website()));
-        profile.setCity(dto.city().trim());
-        profile.setState(dto.state().trim().toUpperCase(Locale.ROOT));
+        profile.setLongitude(dto.longitude());
+        profile.setLatitude(dto.latitude());
+        profile.setCity(endereco.cidade());
+        profile.setState(endereco.estado());
         profile.setDescription(blankToNull(dto.description()));
         companyProfileRepository.save(profile);
 

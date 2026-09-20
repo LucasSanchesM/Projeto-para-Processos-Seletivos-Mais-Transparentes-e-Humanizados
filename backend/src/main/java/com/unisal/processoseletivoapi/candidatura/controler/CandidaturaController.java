@@ -1,4 +1,4 @@
-package com.unisal.processoseletivoapi.candidatura;
+package com.unisal.processoseletivoapi.candidatura.controler;
 
 import java.util.List;
 import java.util.UUID;
