@@ -1,11 +1,10 @@
-package com.unisal.processoseletivoapi.vagas.services;
+package com.unisal.processoseletivoapi.geo;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import com.unisal.processoseletivoapi.exception.BusinessException;
-import com.unisal.processoseletivoapi.vagas.dto.EnderecoDto;
 
 import tools.jackson.databind.JsonNode;
 

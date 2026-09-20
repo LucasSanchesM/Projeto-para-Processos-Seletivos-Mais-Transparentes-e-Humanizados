@@ -7,13 +7,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.unisal.processoseletivoapi.company.dto.CompanyProfileDto;
-import com.unisal.processoseletivoapi.company.dto.CreateCompanyProfileDto;
 import com.unisal.processoseletivoapi.company.dto.UpdateCompanyProfileDto;
 import com.unisal.processoseletivoapi.company.entity.CompanyProfile;
 import com.unisal.processoseletivoapi.company.repository.CompanyProfileRepository;
 import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.user.UserRepository;
-import com.unisal.processoseletivoapi.user.entity.User;
 
 @Service
 public class CompanyProfileService {
@@ -33,26 +31,6 @@ public class CompanyProfileService {
     }
 
     @Transactional
-    public CompanyProfileDto createProfileByUserId(UUID userId, CreateCompanyProfileDto dto) {
-        if(companyProfileRepository.findByUserId(userId).isPresent()){
-            throw new BusinessException(HttpStatus.CONFLICT, "Perfil já existente");
-        }
-        var user = userRepository.findById(userId).orElseThrow(()-> new BusinessException(HttpStatus.NOT_FOUND, "Não existe um usuario associado a este id"));
-        CompanyProfile profile = new CompanyProfile();
-        profile.setUser(user);
-        profile.setCnpj(dto.cnpj());
-        profile.setCompanyName(dto.companyName());
-        profile.setDescription(dto.description());
-        profile.setIndustry(dto.industry());
-        profile.setCity(dto.city());
-        profile.setWebsite(dto.website());
-        profile.setState(dto.state());
-        var saved = companyProfileRepository.save(profile);
-        return toDto(saved);
-    }
- 
-
-    @Transactional
     public CompanyProfileDto updateProfile(UUID userId, UpdateCompanyProfileDto dto) {
 
         var profile = companyProfileRepository.findByUserId(userId).orElseThrow(()-> new BusinessException(HttpStatus.NOT_FOUND, "Não existe um perfil associado a este id"));
@@ -63,7 +41,6 @@ public class CompanyProfileService {
 
         if (dto.cnpj() != null)
             profile.setCnpj(dto.cnpj());
-
         if (dto.description() != null)
             profile.setDescription(dto.description());
         if (dto.industry() != null)

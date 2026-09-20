@@ -2,6 +2,7 @@ package com.unisal.processoseletivoapi.auth.dtos;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -34,12 +35,11 @@ public record CompanyRegistrationDto(
                 message = "O site deve começar com http:// ou https://")
         String website,
 
-        @NotBlank(message = "A cidade é obrigatória")
-        String city,
+        @NotNull(message = "latitude é obrigatorio")
+        Double latitude,
 
-        @NotBlank(message = "O estado é obrigatório")
-        @Pattern(regexp = "[A-Za-z]{2}", message = "Informe a UF com 2 letras")
-        String state,
+        @NotNull(message = "longitude é obrigatório")
+        Double longitude,
 
         @Size(max = 1500, message = "A descrição deve ter no máximo 1500 caracteres")
         String description) {

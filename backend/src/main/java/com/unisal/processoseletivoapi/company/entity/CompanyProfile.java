@@ -29,20 +29,34 @@ public class CompanyProfile {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Column(nullable = false)
+    @Column(nullable = false, name="company_name")
     private String companyName;
 
-    @Column(unique = true)
+    @Column(unique = true, name="cnpj")
     private String cnpj;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", name="description")
     private String description;
 
+    @Column(name="industry")
     private String industry;
+
+    @Column(name="website")
     private String website;
+
+    @Column(name="city")
     private String city;
+
+    @Column(name="state")
     private String state;
+
+    @Column(name="logo_url")
     private String logoUrl;
+
+    @Column (name="latitude", nullable=false)
+    private Double latitude;
+    @Column (name="longitude", nullable=false)
+    private Double longitude;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -67,6 +81,23 @@ public class CompanyProfile {
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+    
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
     }
 
     public UUID getId() {
