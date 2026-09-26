@@ -39,6 +39,9 @@ public class User {
     @Column(name = "linkedin_subject", unique = true)
     private String linkedinSubject;
 
+    @Column (name="google_subject", unique=true)
+    private String googleSubject;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -143,5 +146,13 @@ public class User {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getGoogleSubject() {
+        return googleSubject;
+    }
+
+    public void setGoogleSubject(String googleSubject) {
+        this.googleSubject = googleSubject;
     }
 }

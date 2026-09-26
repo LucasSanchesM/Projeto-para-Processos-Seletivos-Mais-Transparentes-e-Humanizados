@@ -29,8 +29,8 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
-import com.unisal.processoseletivoapi.auth.oauth.LinkedInOAuthFailureHandler;
-import com.unisal.processoseletivoapi.auth.oauth.LinkedInOAuthSuccessHandler;
+import com.unisal.processoseletivoapi.auth.oauth.OAuthFailureHandler;
+import com.unisal.processoseletivoapi.auth.oauth.OAuthSuccessHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -45,8 +45,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            LinkedInOAuthSuccessHandler linkedInOAuthSuccessHandler,
-            LinkedInOAuthFailureHandler linkedInOAuthFailureHandler,
+            OAuthSuccessHandler oAuthSuccessHandler,
+            OAuthFailureHandler oAuthFailureHandler,
             OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> tokenResponseClient,
             OAuth2AuthorizationRequestResolver authorizationRequestResolver) throws Exception {
         http
@@ -68,8 +68,8 @@ public class SecurityConfig {
                         .authorizationEndpoint(
                                 endpoint -> endpoint.authorizationRequestResolver(authorizationRequestResolver))
                         .tokenEndpoint(token -> token.accessTokenResponseClient(tokenResponseClient))
-                        .successHandler(linkedInOAuthSuccessHandler)
-                        .failureHandler(linkedInOAuthFailureHandler))
+                        .successHandler(oAuthSuccessHandler)
+                        .failureHandler(oAuthFailureHandler))
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
 
