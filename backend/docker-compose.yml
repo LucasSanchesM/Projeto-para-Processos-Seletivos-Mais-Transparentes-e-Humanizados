@@ -1,15 +1,6 @@
 
 services:
 
-  api:
-    image: selecta-api
-    build: .
-    pull_policy: build
-    ports:
-      - "8080:8080"
-    depends_on:
-      - postgres
-      - rabbitmq
   rabbitmq:
     image: rabbitmq:4-management
     container_name: rabbitmq
@@ -18,17 +9,17 @@ services:
       - "5672:5672"
       - "15672:15672" #porta para UI de gerenciamento http
     environment:
-        RABBITMQ_DEFAULT_USER: admin
-        RABBITMQ_DEFAULT_PASS: 1234
+        RABBITMQ_DEFAULT_USER: ${SPRING_RABBITMQ_USERNAME}
+        RABBITMQ_DEFAULT_PASS: ${SPRING_RABBITMQ_PASSWORD}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: bancoDeDados
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: ${SPRING_DATASOURCE_DB}
+      POSTGRES_USER: ${SPRING_DATASOURCE_USERNAME}
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
     ports:
       - "5433:5432"
     volumes:

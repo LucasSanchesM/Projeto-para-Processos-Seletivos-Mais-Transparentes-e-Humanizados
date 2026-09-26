@@ -8,11 +8,11 @@ spring:
   application:
     name: processoseletivoapi
   config:
-    import: "optional:file:./.env[.properties]"
+    import: "optional:file:./backend/.env[.properties]"
   datasource:
-    url: jdbc:postgresql://postgres:5432/bancoDeDados
-    username: user
-    password: "1234"
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
   servlet:
     multipart:
@@ -26,10 +26,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   rabbitmq:
-    host: rabbitmq
-    port: 5672
-    username: admin
-    password: "1234"
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING_RABBITMQ_PORT}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
     listener:
       simple:
         default-requeue-rejected: false
@@ -67,4 +67,4 @@ r2:
   public-base-url: ${R2_PUBLIC_BASE_URL:}
 resend:
   api:
-    key: "re_6kix7ry9_CXVSdegCpR46YMiycAmqy9TX" #NAO ESQUECER DE DEIXAR COMO VARIAVEL DE AMBIENTE
+    key: ${API_KEY}
