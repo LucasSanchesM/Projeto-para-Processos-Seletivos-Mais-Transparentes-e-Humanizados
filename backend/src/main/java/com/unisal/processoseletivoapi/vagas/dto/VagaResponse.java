@@ -2,6 +2,7 @@ package com.unisal.processoseletivoapi.vagas.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import com.unisal.processoseletivoapi.vagas.VagaRole;
@@ -34,6 +35,8 @@ public record VagaResponse(
     VagaRole categoria,
     ModalidadeVaga modalidade,
     NivelExperiencia nivelExperiencia,
+
+    List<EtapaVagaResponse> etapas,
 
     Boolean ativa,
     LocalDateTime createdAt,

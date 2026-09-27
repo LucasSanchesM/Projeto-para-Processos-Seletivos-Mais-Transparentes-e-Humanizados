@@ -1,5 +1,7 @@
 package com.unisal.processoseletivoapi.candidatura.entity;
 
+import java.util.List;
+
 /**
  * Etapas fixas do processo seletivo.
  * A "ordem" garante que a empresa só consiga avançar o candidato para frente.
@@ -32,5 +34,9 @@ public enum EtapaProcesso {
 
     public boolean isDepoisDe(EtapaProcesso outra) {
         return this.ordem > outra.ordem;
+    }
+
+    public static List<EtapaProcesso> etapasConfiguraveisPadrao() {
+        return List.of(TRIAGEM, ENTREVISTA_RH, TESTE_TECNICO, ENTREVISTA_TECNICA, PROPOSTA);
     }
 }

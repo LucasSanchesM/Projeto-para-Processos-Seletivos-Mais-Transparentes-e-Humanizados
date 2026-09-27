@@ -175,10 +175,24 @@ public class CandidaturaService {
         }
 
         EtapaProcesso etapaAnterior = candidatura.getEtapaAtual();
+        List<EtapaProcesso> fluxo = candidatura.getVaga().getEtapas().stream()
+            .map(etapa -> etapa.getEtapa())
+            .toList();
 
-        if (!dto.etapa().isDepoisDe(etapaAnterior)) {
+        if (fluxo.isEmpty()) {
+            fluxo = EtapaProcesso.etapasConfiguraveisPadrao();
+        }
+
+        int indiceEtapaAtual = fluxo.indexOf(etapaAnterior);
+        EtapaProcesso proximaEtapa = indiceEtapaAtual + 1 < fluxo.size()
+            ? fluxo.get(indiceEtapaAtual + 1)
+            : null;
+
+        if (proximaEtapa == null || dto.etapa() != proximaEtapa) {
             throw new BusinessException(HttpStatus.BAD_REQUEST,
-                    "A nova etapa deve ser posterior à etapa atual (" + etapaAnterior.getDescricao() + ")");
+                "A próxima etapa deve ser " + (proximaEtapa == null
+                    ? "inexistente, pois o fluxo já foi concluído"
+                    : proximaEtapa.getDescricao()));
         }
 
         candidatura.setEtapaAtual(dto.etapa());

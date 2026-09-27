@@ -56,6 +56,7 @@ public class CandidateProfileService {
 
     @Transactional
     public CandidateProfileDto createProfile(UUID userId, CreateProfileDto dto) {
+        
         if (candidateProfileRepository.findByUserId(userId).isPresent()) {
             throw new BusinessException(HttpStatus.CONFLICT, "Já existe um perfil associado a este usuario");
         }

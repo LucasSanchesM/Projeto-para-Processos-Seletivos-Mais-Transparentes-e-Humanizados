@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,6 +13,7 @@ import com.unisal.processoseletivoapi.vagas.entity.Vaga;
 
 public interface VagaRepository extends JpaRepository<Vaga, UUID>, JpaSpecificationExecutor<Vaga> {
 
+    @EntityGraph(attributePaths = "etapas")
     List<Vaga> findByEmpresaId(UUID companyProfileId);
 
     //consulta banco com filtro de raio
