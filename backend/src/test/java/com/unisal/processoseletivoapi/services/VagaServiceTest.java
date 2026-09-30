@@ -185,7 +185,46 @@ public class VagaServiceTest {
 
         }
 
+        @Test
+        @DisplayName("Should not create a vaga when etapa contain incrição or contratação")
+        void shouldNotCreateAVagaWhenEtapaContainIncricaoOrContratacao(){
+            //===== ARRANGE =======
+            var input = new CreateVagaDto(
+                    "Desenvolvedor Backend Java",
+                    new BigDecimal("5000.00"),
+                    "Vaga para desenvolvedor backend com experiência em Spring Boot",
+                    "Vale alimentação, plano de saúde, home office",
+                    dto.companyProfileId(),
+                    VagaRole.DESENVOLVIMENTO_SOFTWARE,
+                    ModalidadeVaga.PRESENCIAL,
+                    NivelExperiencia.PLENO,
+                    -23.5505,
+                    -46.6333,
+                     List.of(EtapaProcesso.INSCRICAO, EtapaProcesso.ENTREVISTA_RH, EtapaProcesso.CONTRATACAO)
+            );
+            doReturn(Optional.of(empresa)).when(companyProfileRepository).findById(input.companyProfileId());
+            var endereco = new EnderecoDto("Lorena", "SP");
+            doReturn(endereco).when(geoCodingService).retornarEndereco(input.latitude(), input.longitude());
 
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> vagaService.createVaga(input));
+
+            //===== ASSERT =======
+            verify(companyProfileRepository, times(1)).findById(uuidArgumentCaptor.capture());
+            assertEquals(input.companyProfileId(), uuidArgumentCaptor.getValue());
+
+            verify(geoCodingService, times(1)).retornarEndereco(doubleArgumentCaptor.capture(), doubleArgumentCaptor.capture());
+            var listOfDoubles = doubleArgumentCaptor.getAllValues();
+
+            assertEquals(dto.latitude(), listOfDoubles.get(0));
+            assertEquals(dto.longitude(), listOfDoubles.get(1));
+
+            verify(vagaRepository, never()).save(any(Vaga.class));
+
+            assertEquals("A vaga deve possuir etapas configuráveis distintas, sem INSCRICAO ou CONTRATACAO", response.getMessage());
+
+
+        }
     }
 
 
