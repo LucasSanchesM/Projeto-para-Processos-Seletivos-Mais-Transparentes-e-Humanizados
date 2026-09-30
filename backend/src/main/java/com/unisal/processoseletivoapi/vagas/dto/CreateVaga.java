@@ -2,8 +2,10 @@
 package com.unisal.processoseletivoapi.vagas.dto;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
+import com.unisal.processoseletivoapi.candidatura.entity.EtapaProcesso;
 import com.unisal.processoseletivoapi.vagas.VagaRole;
 import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
 import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
@@ -11,6 +13,7 @@ import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public record CreateVaga(
 
@@ -43,6 +46,9 @@ public record CreateVaga(
     Double latitude,
 
     @NotNull(message = "O campo 'longitude' é obrigatorio")
-    Double longitude
+    Double longitude,
+
+    @Size(max = 5, message = "A vaga pode ter no máximo 5 etapas configuráveis")
+    List<EtapaProcesso> etapas
 
 ) {}

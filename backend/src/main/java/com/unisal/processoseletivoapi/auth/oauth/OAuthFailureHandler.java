@@ -15,12 +15,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 @Component
-public class LinkedInOAuthFailureHandler implements AuthenticationFailureHandler {
+public class OAuthFailureHandler implements AuthenticationFailureHandler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LinkedInOAuthFailureHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(OAuthFailureHandler.class);
     private final String frontendUrl;
 
-    public LinkedInOAuthFailureHandler(@Value("${app.frontend-url}") String frontendUrl) {
+    public OAuthFailureHandler(@Value("${app.frontend-url}") String frontendUrl) {
         this.frontendUrl = frontendUrl;
     }
 
@@ -30,16 +30,16 @@ public class LinkedInOAuthFailureHandler implements AuthenticationFailureHandler
             HttpServletResponse response,
             AuthenticationException exception) throws IOException {
         if (exception instanceof OAuth2AuthenticationException oauthException) {
-            LOGGER.error("Falha no OAuth do LinkedIn: code={}, description={}",
+            LOGGER.error("Falha no OAuth: code={}, description={}",
                     oauthException.getError().getErrorCode(),
                     oauthException.getError().getDescription());
         } else {
-            LOGGER.error("Falha inesperada no OAuth do LinkedIn: {}", exception.getMessage());
+            LOGGER.error("Falha inesperada no OAuth: {}", exception.getMessage());
         }
         HttpSession session = request.getSession(false);
         if (session != null) {
             session.invalidate();
         }
-        response.sendRedirect(frontendUrl + "/auth/candidato?linkedinError=oauth_failed");
+        response.sendRedirect(frontendUrl + "/auth/candidato?oauthError=oauth_failed");
     }
 }

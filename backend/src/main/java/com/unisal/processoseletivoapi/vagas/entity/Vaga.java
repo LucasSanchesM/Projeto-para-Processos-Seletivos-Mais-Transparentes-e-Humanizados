@@ -2,12 +2,15 @@ package com.unisal.processoseletivoapi.vagas.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import com.unisal.processoseletivoapi.company.entity.CompanyProfile;
 import com.unisal.processoseletivoapi.vagas.VagaRole;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -17,6 +20,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -69,6 +74,10 @@ public class Vaga {
 
     @Column(nullable = false)
     private Boolean ativa;
+
+    @OneToMany(mappedBy = "vaga", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("ordem ASC")
+    private List<VagaEtapa> etapas = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -210,6 +219,15 @@ public class Vaga {
 
     public void setAtiva(Boolean ativa) {
         this.ativa = ativa;
+    }
+
+    public List<VagaEtapa> getEtapas() {
+        return etapas;
+    }
+
+    public void setEtapas(List<VagaEtapa> etapas) {
+        this.etapas.clear();
+        this.etapas.addAll(etapas);
     }
 
     public LocalDateTime getCreatedAt() {

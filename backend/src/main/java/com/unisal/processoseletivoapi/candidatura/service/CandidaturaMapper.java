@@ -12,8 +12,10 @@ import com.unisal.processoseletivoapi.candidatura.dto.HistoricoResponse;
 import com.unisal.processoseletivoapi.candidatura.entity.Candidatura;
 import com.unisal.processoseletivoapi.candidatura.entity.CandidaturaFeedback;
 import com.unisal.processoseletivoapi.candidatura.entity.CandidaturaHistorico;
+import com.unisal.processoseletivoapi.candidatura.entity.EtapaProcesso;
 import com.unisal.processoseletivoapi.company.entity.CompanyProfile;
 import com.unisal.processoseletivoapi.vagas.entity.Vaga;
+import com.unisal.processoseletivoapi.vagas.dto.EtapaVagaResponse;
 
 @Component
 public class CandidaturaMapper {
@@ -22,6 +24,15 @@ public class CandidaturaMapper {
         Vaga vaga = candidatura.getVaga();
         CompanyProfile empresa = vaga.getEmpresa();
         CandidateProfile candidato = candidatura.getCandidato();
+        List<EtapaVagaResponse> etapasVaga = vaga.getEtapas().isEmpty()
+            ? EtapaProcesso.etapasConfiguraveisPadrao().stream()
+                .map((etapa) -> new EtapaVagaResponse(
+                    etapa, etapa.getDescricao(), EtapaProcesso.etapasConfiguraveisPadrao().indexOf(etapa) + 1))
+                .toList()
+            : vaga.getEtapas().stream()
+                .map((etapa) -> new EtapaVagaResponse(
+                    etapa.getEtapa(), etapa.getEtapa().getDescricao(), etapa.getOrdem()))
+                .toList();
 
         return new CandidaturaResponse(
                 candidatura.getId(),
@@ -38,6 +49,7 @@ public class CandidaturaMapper {
                 candidato.getProfileImageUrl(),
                 candidatura.getEtapaAtual(),
                 candidatura.getEtapaAtual().getDescricao(),
+                etapasVaga,
                 candidatura.getStatus(),
                 candidatura.getStatus().getDescricao(),
                 candidatura.getCartaApresentacao(),

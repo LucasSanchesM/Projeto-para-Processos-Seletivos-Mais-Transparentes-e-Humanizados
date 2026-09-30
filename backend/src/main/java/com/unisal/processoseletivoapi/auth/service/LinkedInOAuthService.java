@@ -14,8 +14,8 @@ import com.unisal.processoseletivoapi.user.UserRepository;
 import com.unisal.processoseletivoapi.user.UserRole;
 import com.unisal.processoseletivoapi.user.entity.User;
 
-@Service
-public class LinkedInOAuthService {
+@Service("linkedin")
+public class LinkedInOAuthService implements OAuthProviderService{
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -31,6 +31,7 @@ public class LinkedInOAuthService {
     }
 
     @Transactional
+    @Override
     public User authenticateCandidate(OidcUser linkedInUser) {
         String subject = requiredClaim(linkedInUser.getSubject(),
                 "O LinkedIn não retornou um identificador válido");

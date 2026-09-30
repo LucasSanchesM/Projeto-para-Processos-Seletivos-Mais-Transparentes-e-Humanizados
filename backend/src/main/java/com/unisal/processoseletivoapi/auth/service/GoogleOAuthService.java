@@ -1,0 +1,91 @@
+package com.unisal.processoseletivoapi.auth.service;
+
+import java.util.Locale;
+import java.util.UUID;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.stereotype.Service;
+
+import com.unisal.processoseletivoapi.exception.BusinessException;
+import com.unisal.processoseletivoapi.user.UserRepository;
+import com.unisal.processoseletivoapi.user.UserRole;
+import com.unisal.processoseletivoapi.user.entity.User;
+
+import jakarta.transaction.Transactional;
+
+@Service("google")
+public class GoogleOAuthService implements OAuthProviderService{
+    
+
+    private final UserRepository userRepository;
+    private final VerificationCodeService verificationCodeService;
+    private final BCryptPasswordEncoder passwordEncoder;
+
+    
+
+    public GoogleOAuthService(UserRepository userRepository, VerificationCodeService verificationCodeService,
+            BCryptPasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.verificationCodeService = verificationCodeService;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    @Transactional
+    @Override 
+    public User authenticateCandidate(OidcUser oidcUser){
+        String subject = requiredClaim(oidcUser.getSubject(), "Google nao retornou um subject");
+
+
+        
+        //Primeiro eu vejo se há algum perfil associado a esse subject
+        var googleAccount = userRepository.findByGoogleSubject(subject);
+        if(googleAccount.isPresent()){
+            verifyCandidateRole(googleAccount.get());
+            return googleAccount.get();
+        }
+        String email = requiredClaim(oidcUser.getEmail(), "Google nao retornou seu email");
+        if(!Boolean.TRUE.equals(oidcUser.getEmailVerified())){
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, "Apenas candidatos podem utiizar login via google");
+        }
+        
+        email = email.trim().toLowerCase(Locale.ROOT);
+
+        var existingUser = userRepository.findByEmail(email);
+        if(existingUser.isPresent()){
+            User user = existingUser.get();
+            verifyCandidateRole(user);
+            user.setGoogleSubject(subject);
+            if(!Boolean.TRUE.equals(user.getActive())){
+                user.setActive(true);
+                verificationCodeService.removeCode(user);
+            }
+            return userRepository.save(user);
+        }
+
+        User user = new User();
+        user.setName(requiredClaim(oidcUser.getFullName(), "Google nao retornou seu nome completo"));
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+        user.setActive(true);
+        user.setRole(UserRole.CANDIDATE.name());
+        user.setGoogleSubject(subject);
+        return userRepository.save(user);
+    }
+
+    //Esse metodo daqui ele verifica se a role do candidato utilizado é o correto
+    private void verifyCandidateRole(User user){
+        if(!"CANDIDATE".equals(user.getRole())){
+            throw new BusinessException(HttpStatus.FORBIDDEN, "Apenas candidatos podem utiizar login via google");
+        }
+    }
+
+    //Esse metodo verifica se claim retornado possuir valor
+    private String requiredClaim(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, message);
+        }
+        return value.trim();
+    }
+}

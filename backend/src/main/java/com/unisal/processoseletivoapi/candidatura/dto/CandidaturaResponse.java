@@ -1,10 +1,12 @@
 package com.unisal.processoseletivoapi.candidatura.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import com.unisal.processoseletivoapi.candidatura.entity.EtapaProcesso;
 import com.unisal.processoseletivoapi.candidatura.entity.StatusCandidatura;
+import com.unisal.processoseletivoapi.vagas.dto.EtapaVagaResponse;
 
 public record CandidaturaResponse(
 
@@ -30,6 +32,7 @@ public record CandidaturaResponse(
                 // Situação do processo
                 EtapaProcesso etapaAtual,
                 String etapaAtualDescricao,
+                List<EtapaVagaResponse> etapasVaga,
                 StatusCandidatura status,
                 String statusDescricao,
 

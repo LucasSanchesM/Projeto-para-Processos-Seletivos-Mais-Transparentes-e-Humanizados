@@ -2,6 +2,7 @@ package com.unisal.processoseletivoapi.vagas.services;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.HashSet;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.unisal.processoseletivoapi.company.entity.CompanyProfile;
+import com.unisal.processoseletivoapi.candidatura.entity.EtapaProcesso;
 import com.unisal.processoseletivoapi.company.repository.CompanyProfileRepository;
 import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.geo.GeoCodingService;
@@ -16,11 +18,13 @@ import com.unisal.processoseletivoapi.vagas.VagaRepository;
 import com.unisal.processoseletivoapi.vagas.VagaRole;
 import com.unisal.processoseletivoapi.vagas.VagaSpecification;
 import com.unisal.processoseletivoapi.vagas.dto.CreateVaga;
+import com.unisal.processoseletivoapi.vagas.dto.EtapaVagaResponse;
 import com.unisal.processoseletivoapi.vagas.dto.UpdateVaga;
 import com.unisal.processoseletivoapi.vagas.dto.VagaResponse;
 import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
 import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
 import com.unisal.processoseletivoapi.vagas.entity.Vaga;
+import com.unisal.processoseletivoapi.vagas.entity.VagaEtapa;
 
 @Service
 public class VagaService {
@@ -63,6 +67,8 @@ public class VagaService {
         vaga.setModalidade(dto.modalidade());
         vaga.setNivelExperiencia(dto.nivelExperiencia());
         vaga.setAtiva(true);
+
+        configurarEtapas(vaga, dto.etapas());
 
         var savedVaga = vagaRepository.save(vaga);
 
@@ -197,6 +203,21 @@ public class VagaService {
     private VagaResponse mapToResponse(Vaga vaga) {
 
         CompanyProfile empresa = vaga.getEmpresa();
+        List<VagaEtapa> etapas = vaga.getEtapas();
+
+        List<EtapaVagaResponse> etapasResponse = etapas.isEmpty()
+            ? EtapaProcesso.etapasConfiguraveisPadrao().stream()
+                .map(etapa -> new EtapaVagaResponse(
+                    etapa,
+                    etapa.getDescricao(),
+                    EtapaProcesso.etapasConfiguraveisPadrao().indexOf(etapa) + 1))
+                .toList()
+            : etapas.stream()
+                .map(etapa -> new EtapaVagaResponse(
+                    etapa.getEtapa(),
+                    etapa.getEtapa().getDescricao(),
+                    etapa.getOrdem()))
+                .toList();
 
         return new VagaResponse(
                 vaga.getId(),
@@ -215,9 +236,28 @@ public class VagaService {
                 vaga.getCategoria(),
                 vaga.getModalidade(),
                 vaga.getNivelExperiencia(),
+                etapasResponse,
                 vaga.getAtiva(),
                 vaga.getCreatedAt(),
                 vaga.getUpdatedAt()
         );
     }
+
+            private void configurarEtapas(Vaga vaga, List<EtapaProcesso> etapasInformadas) {
+            List<EtapaProcesso> etapas = etapasInformadas == null || etapasInformadas.isEmpty()
+                ? EtapaProcesso.etapasConfiguraveisPadrao()
+                : etapasInformadas;
+
+            if (etapas.stream().anyMatch(etapa -> etapa == null)
+                || etapas.contains(EtapaProcesso.INSCRICAO)
+                || etapas.contains(EtapaProcesso.CONTRATACAO)
+                || new HashSet<>(etapas).size() != etapas.size()) {
+                throw new BusinessException(HttpStatus.BAD_REQUEST,
+                    "A vaga deve possuir etapas configuráveis distintas, sem INSCRICAO ou CONTRATACAO");
+            }
+
+            vaga.setEtapas(etapas.stream()
+                .map(etapa -> new VagaEtapa(vaga, etapa, etapas.indexOf(etapa) + 1))
+                .toList());
+            }
 }
