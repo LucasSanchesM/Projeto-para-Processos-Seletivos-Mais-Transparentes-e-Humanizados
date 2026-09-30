@@ -17,7 +17,7 @@ import com.unisal.processoseletivoapi.geo.GeoCodingService;
 import com.unisal.processoseletivoapi.vagas.VagaRepository;
 import com.unisal.processoseletivoapi.vagas.VagaRole;
 import com.unisal.processoseletivoapi.vagas.VagaSpecification;
-import com.unisal.processoseletivoapi.vagas.dto.CreateVaga;
+import com.unisal.processoseletivoapi.vagas.dto.CreateVagaDto;
 import com.unisal.processoseletivoapi.vagas.dto.EtapaVagaResponse;
 import com.unisal.processoseletivoapi.vagas.dto.UpdateVaga;
 import com.unisal.processoseletivoapi.vagas.dto.VagaResponse;
@@ -43,7 +43,7 @@ public class VagaService {
     }
 
     @Transactional
-    public VagaResponse createVaga(CreateVaga dto) {
+    public VagaResponse createVaga(CreateVagaDto dto) {
 
         CompanyProfile empresa = companyProfileRepository.findById(dto.companyProfileId())
                 .orElseThrow(() -> new BusinessException(

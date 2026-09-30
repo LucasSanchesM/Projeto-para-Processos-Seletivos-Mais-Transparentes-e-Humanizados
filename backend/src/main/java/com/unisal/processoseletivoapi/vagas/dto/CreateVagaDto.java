@@ -15,7 +15,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-public record CreateVaga(
+public record CreateVagaDto(
 
     @NotBlank(message = "O campo 'titulo' é obrigatório")
     String titulo,

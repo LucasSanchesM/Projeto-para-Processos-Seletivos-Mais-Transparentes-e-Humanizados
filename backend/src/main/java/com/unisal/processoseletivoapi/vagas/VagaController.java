@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.unisal.processoseletivoapi.vagas.dto.CreateVaga;
+import com.unisal.processoseletivoapi.vagas.dto.CreateVagaDto;
 import com.unisal.processoseletivoapi.vagas.dto.UpdateVaga;
 import com.unisal.processoseletivoapi.vagas.dto.VagaResponse;
 import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
@@ -39,7 +39,7 @@ public class VagaController {
     // CRIAR UMA VAGA
     @PostMapping
     public ResponseEntity<VagaResponse> createVaga(
-            @Valid @RequestBody CreateVaga dto) {
+            @Valid @RequestBody CreateVagaDto dto) {
 
         var vaga = vagaService.createVaga(dto);
 

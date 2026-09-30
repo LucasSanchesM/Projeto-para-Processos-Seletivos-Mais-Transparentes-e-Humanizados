@@ -11,24 +11,3 @@ public class ProcessoseletivoapiApplication {
 	}
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
