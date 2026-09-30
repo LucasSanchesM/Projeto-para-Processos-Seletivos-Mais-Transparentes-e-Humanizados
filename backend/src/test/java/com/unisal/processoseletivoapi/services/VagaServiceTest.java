@@ -25,12 +25,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -225,6 +225,90 @@ public class VagaServiceTest {
 
 
         }
+
+        @Test
+        @DisplayName("Should create a vaga successfully when etapas is blank")
+        void shouldCreateAVagaSuccessfullyWhenEtapasIsBlank(){
+            var input = new CreateVagaDto(
+                    "Desenvolvedor Backend Java",
+                    new BigDecimal("5000.00"),
+                    "Vaga para desenvolvedor backend com experiência em Spring Boot",
+                    "Vale alimentação, plano de saúde, home office",
+                    dto.companyProfileId(),
+                    VagaRole.DESENVOLVIMENTO_SOFTWARE,
+                    ModalidadeVaga.PRESENCIAL,
+                    NivelExperiencia.PLENO,
+                    -23.5505,
+                    -46.6333,
+                    Collections.emptyList()
+            );
+            doReturn(Optional.of(empresa)).when(companyProfileRepository).findById(input.companyProfileId());
+            var endereco = new EnderecoDto("Lorena", "SP");
+            doReturn(endereco).when(geoCodingService).retornarEndereco(input.latitude(), input.longitude());
+            when(vagaRepository.save(any(Vaga.class))).thenAnswer(chamado ->{
+                return chamado.getArgument(0);
+            });
+
+            //===== ACT =======
+            var response = vagaService.createVaga(input);
+
+            //===== ASSERT =======
+            //Verifica se busca por empresa foi feita e captura id usado pra chamado
+            verify(companyProfileRepository, times(1)).findById(uuidArgumentCaptor.capture());
+            //Assegura que id usado para busca de empresa é o mesmo passado nos parametros
+            assertEquals(input.companyProfileId(), uuidArgumentCaptor.getValue());
+
+            //Assegura que busca por endereco foi chamado
+            verify(geoCodingService, times(1)).retornarEndereco(doubleArgumentCaptor.capture(), doubleArgumentCaptor.capture());
+            var listOfDoubles = doubleArgumentCaptor.getAllValues();//index 0 -> latitude && index 1 -> longitude
+            //Verifica se valores utilizados para busca de endeço bate com o inserido no metodo
+            assertEquals(input.latitude(), listOfDoubles.get(0));
+            assertEquals(input.longitude(), listOfDoubles.get(1));
+
+            //Verifica que informaçoes foram salvas
+            verify(vagaRepository, times(1)).save(vagaArgumentCaptor.capture());
+            var vagaCaptured = vagaArgumentCaptor.getValue();
+            //Assegura que o foi salvo no banco bate com o inserido no metodo
+            assertEquals(input.titulo(), vagaCaptured.getTitulo());
+            assertEquals(input.salario(), vagaCaptured.getSalario());
+            assertEquals(input.descricao(), vagaCaptured.getDescricao());
+            assertEquals(input.beneficios(), vagaCaptured.getBeneficios());
+            assertEquals(input.companyProfileId(), vagaCaptured.getEmpresa().getId());
+            assertEquals(input.categoria(), vagaCaptured.getCategoria());
+            assertEquals(input.modalidade(), vagaCaptured.getModalidade());
+            assertEquals(input.nivelExperiencia(), vagaCaptured.getNivelExperiencia());
+            assertEquals(input.latitude(), vagaCaptured.getLatitude());
+            assertEquals(input.longitude(), vagaCaptured.getLongitude());
+
+            //Pega lista de etapas salva no banco
+            var etapas = vagaCaptured.getEtapas().stream().map(etapa -> etapa.getEtapa()).toList();
+
+            var etapasPadrao = List.of( EtapaProcesso.TRIAGEM,
+                                        EtapaProcesso.ENTREVISTA_RH,
+                                        EtapaProcesso.TESTE_TECNICO,
+                                        EtapaProcesso.ENTREVISTA_TECNICA,
+                                        EtapaProcesso.PROPOSTA);
+            assertEquals(etapasPadrao, etapas);
+
+            //Verifica se cidade e estado salvo sao os corretos
+            assertEquals("Lorena", vagaCaptured.getCidade());
+            assertEquals("SP", vagaCaptured.getEstado());
+
+
+            //Assegura que o foi retornado bate com o inserido no metodo
+            assertEquals(input.titulo(), response.titulo());
+            assertEquals(input.salario(), response.salario());
+            assertEquals(input.descricao(), response.descricao());
+            assertEquals(input.beneficios(), response.beneficios());
+            assertEquals(input.companyProfileId(), response.companyProfileId());
+            assertEquals(input.categoria(), response.categoria());
+            assertEquals(input.modalidade(), response.modalidade());
+            assertEquals(input.nivelExperiencia(), response.nivelExperiencia());
+            assertEquals(input.latitude(), response.latitude());
+            assertEquals(input.longitude(), response.longitude());
+
+        }
+
     }
 
 
