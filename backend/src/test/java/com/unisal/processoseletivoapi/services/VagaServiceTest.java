@@ -3,6 +3,7 @@ package com.unisal.processoseletivoapi.services;
 import com.unisal.processoseletivoapi.candidatura.entity.EtapaProcesso;
 import com.unisal.processoseletivoapi.company.entity.CompanyProfile;
 import com.unisal.processoseletivoapi.company.repository.CompanyProfileRepository;
+import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.geo.EnderecoDto;
 import com.unisal.processoseletivoapi.geo.GeoCodingService;
 import com.unisal.processoseletivoapi.vagas.VagaRepository;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -160,6 +162,30 @@ public class VagaServiceTest {
             assertEquals(input.longitude(), response.longitude());
 
         }
+
+        @Test
+        @DisplayName("Should not create a vaga when company don't exist")
+        void shouldNotCreateAVagaWhenCompanyDontExist(){
+            //===== ARRANGE =======
+            var input = dto;
+            doReturn(Optional.empty()).when(companyProfileRepository).findById(input.companyProfileId());
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()-> vagaService.createVaga(input));
+
+            //===== ASSERT =======
+            //Garante que nenhuma info foi salva no banco de dados
+            verify(vagaRepository, never()).save(any(Vaga.class));
+
+            //Assegura que busca por empresas foi feito
+            verify(companyProfileRepository, times(1)).findById(uuidArgumentCaptor.capture());
+            //Verifica que id usado busca por empresa é o mesmo presente no dto de input
+            assertEquals(input.companyProfileId(), uuidArgumentCaptor.getValue());
+            assertEquals("Empresa não encontrada com o id: " + uuidArgumentCaptor.getValue(), response.getMessage());
+
+        }
+
+
     }
 
 
