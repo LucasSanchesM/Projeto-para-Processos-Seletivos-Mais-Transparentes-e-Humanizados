@@ -6,7 +6,8 @@ public record CandidaturaDetalheResponse(
 
                 CandidaturaResponse candidatura,
                 List<HistoricoResponse> historico,
-                List<FeedbackResponse> feedbacks
+                List<FeedbackResponse> feedbacks,
+                List<AgendamentoResponse> agendamentos
 
 ) {
 }

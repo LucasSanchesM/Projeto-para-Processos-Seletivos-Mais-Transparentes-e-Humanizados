@@ -18,11 +18,13 @@ import com.unisal.processoseletivoapi.candidatura.dto.CandidaturaResponse;
 import com.unisal.processoseletivoapi.candidatura.dto.CreateCandidatura;
 import com.unisal.processoseletivoapi.candidatura.dto.DecidirCandidaturaDto;
 import com.unisal.processoseletivoapi.candidatura.entity.Candidatura;
+import com.unisal.processoseletivoapi.candidatura.entity.CandidaturaAgendamento;
 import com.unisal.processoseletivoapi.candidatura.entity.CandidaturaHistorico;
 import com.unisal.processoseletivoapi.candidatura.entity.EtapaProcesso;
 import com.unisal.processoseletivoapi.candidatura.entity.StatusCandidatura;
 import com.unisal.processoseletivoapi.candidatura.repository.CandidaturaFeedbackRepository;
 import com.unisal.processoseletivoapi.candidatura.repository.CandidaturaHistoricoRepository;
+import com.unisal.processoseletivoapi.candidatura.repository.CandidaturaAgendamentoRepository;
 import com.unisal.processoseletivoapi.candidatura.repository.CandidaturaRepository;
 import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.mensageria.dto.CandidaturaEmailRequest;
@@ -37,6 +39,7 @@ public class CandidaturaService {
     private final CandidaturaRepository candidaturaRepository;
     private final CandidaturaHistoricoRepository historicoRepository;
     private final CandidaturaFeedbackRepository feedbackRepository;
+    private final CandidaturaAgendamentoRepository agendamentoRepository;
     private final CandidateProfileRepository candidateProfileRepository;
     private final VagaRepository vagaRepository;
     private final UserRepository userRepository;
@@ -46,6 +49,7 @@ public class CandidaturaService {
     public CandidaturaService(CandidaturaRepository candidaturaRepository,
             CandidaturaHistoricoRepository historicoRepository,
             CandidaturaFeedbackRepository feedbackRepository,
+            CandidaturaAgendamentoRepository agendamentoRepository,
             CandidateProfileRepository candidateProfileRepository,
             VagaRepository vagaRepository,
             UserRepository userRepository,
@@ -54,6 +58,7 @@ public class CandidaturaService {
         this.candidaturaRepository = candidaturaRepository;
         this.historicoRepository = historicoRepository;
         this.feedbackRepository = feedbackRepository;
+        this.agendamentoRepository = agendamentoRepository;
         this.candidateProfileRepository = candidateProfileRepository;
         this.vagaRepository = vagaRepository;
         this.userRepository = userRepository;
@@ -270,6 +275,10 @@ public class CandidaturaService {
     }
 
     public void notificarCandidato(Candidatura candidatura, String mensagem) {
+        notificarCandidato(candidatura, mensagem, null);
+    }
+
+    public void notificarCandidato(Candidatura candidatura, String mensagem, CandidaturaAgendamento agendamento) {
         User candidato = candidatura.getCandidato().getUser();
 
         var request = new CandidaturaEmailRequest(
@@ -279,7 +288,11 @@ public class CandidaturaService {
                 candidatura.getVaga().getEmpresa().getCompanyName(),
                 candidatura.getEtapaAtual().getDescricao(),
                 candidatura.getStatus().getDescricao(),
-                mensagem);
+                mensagem,
+                agendamento != null ? agendamento.getTitulo() : null,
+                agendamento != null ? agendamento.getInicio() : null,
+                agendamento != null ? agendamento.getDuracaoMinutos() : null,
+                agendamento != null ? agendamento.getLink() : null);
 
         rabbitTemplate.convertAndSend("email.exchange", "candidatura.atualizacao.key", request);
     }
@@ -288,7 +301,8 @@ public class CandidaturaService {
         return mapper.toDetalheResponse(
                 candidatura,
                 historicoRepository.findByCandidaturaIdOrderByCreatedAtAsc(candidatura.getId()),
-                feedbackRepository.findByCandidaturaIdOrderByCreatedAtAsc(candidatura.getId()));
+                feedbackRepository.findByCandidaturaIdOrderByCreatedAtAsc(candidatura.getId()),
+                agendamentoRepository.findByCandidaturaIdOrderByInicioAsc(candidatura.getId()));
     }
 
     private long contarFeedbacks(UUID candidaturaId) {

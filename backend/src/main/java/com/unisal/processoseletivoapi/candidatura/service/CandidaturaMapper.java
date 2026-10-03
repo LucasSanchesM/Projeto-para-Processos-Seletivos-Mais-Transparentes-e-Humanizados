@@ -7,9 +7,11 @@ import org.springframework.stereotype.Component;
 import com.unisal.processoseletivoapi.candidate.entity.CandidateProfile;
 import com.unisal.processoseletivoapi.candidatura.dto.CandidaturaDetalheResponse;
 import com.unisal.processoseletivoapi.candidatura.dto.CandidaturaResponse;
+import com.unisal.processoseletivoapi.candidatura.dto.AgendamentoResponse;
 import com.unisal.processoseletivoapi.candidatura.dto.FeedbackResponse;
 import com.unisal.processoseletivoapi.candidatura.dto.HistoricoResponse;
 import com.unisal.processoseletivoapi.candidatura.entity.Candidatura;
+import com.unisal.processoseletivoapi.candidatura.entity.CandidaturaAgendamento;
 import com.unisal.processoseletivoapi.candidatura.entity.CandidaturaFeedback;
 import com.unisal.processoseletivoapi.candidatura.entity.CandidaturaHistorico;
 import com.unisal.processoseletivoapi.candidatura.entity.EtapaProcesso;
@@ -63,12 +65,14 @@ public class CandidaturaMapper {
 
     public CandidaturaDetalheResponse toDetalheResponse(Candidatura candidatura,
             List<CandidaturaHistorico> historico,
-            List<CandidaturaFeedback> feedbacks) {
+            List<CandidaturaFeedback> feedbacks,
+            List<CandidaturaAgendamento> agendamentos) {
 
         return new CandidaturaDetalheResponse(
                 toResponse(candidatura, feedbacks.size()),
                 historico.stream().map(this::toHistoricoResponse).toList(),
-                feedbacks.stream().map(this::toFeedbackResponse).toList());
+                feedbacks.stream().map(this::toFeedbackResponse).toList(),
+                agendamentos.stream().map(this::toAgendamentoResponse).toList());
     }
 
     public HistoricoResponse toHistoricoResponse(CandidaturaHistorico historico) {
@@ -96,5 +100,25 @@ public class CandidaturaMapper {
                 feedback.getAutorNome(),
                 feedback.getCreatedAt(),
                 feedback.getUpdatedAt());
+    }
+
+    public AgendamentoResponse toAgendamentoResponse(CandidaturaAgendamento agendamento) {
+        return new AgendamentoResponse(
+                agendamento.getId(),
+                agendamento.getCandidatura().getId(),
+                agendamento.getEtapa(),
+                agendamento.getEtapa().getDescricao(),
+                agendamento.getTitulo(),
+                agendamento.getMensagem(),
+                agendamento.getInicio(),
+                agendamento.getDuracaoMinutos(),
+                agendamento.getLink(),
+                agendamento.getStatus(),
+                agendamento.getStatus().getDescricao(),
+                agendamento.getCriadoPorUserId(),
+                agendamento.getCriadoPorNome(),
+                agendamento.getMotivoCancelamento(),
+                agendamento.getCreatedAt(),
+                agendamento.getUpdatedAt());
     }
 }

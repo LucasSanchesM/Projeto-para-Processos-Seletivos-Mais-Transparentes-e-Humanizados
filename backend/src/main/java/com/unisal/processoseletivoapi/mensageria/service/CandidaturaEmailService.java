@@ -3,6 +3,8 @@ package com.unisal.processoseletivoapi.mensageria.service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.format.DateTimeFormatter;
+
 import com.resend.Resend;
 import com.resend.core.exception.ResendException;
 import com.resend.services.emails.model.CreateEmailOptions;
@@ -11,6 +13,8 @@ import com.unisal.processoseletivoapi.mensageria.dto.CandidaturaEmailRequest;
 
 @Service
 public class CandidaturaEmailService implements CandidaturaNotifier {
+
+    private static final DateTimeFormatter AGENDAMENTO_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
 
     @Value("${resend.api.key}")
     private String apiKey;
@@ -25,6 +29,7 @@ public class CandidaturaEmailService implements CandidaturaNotifier {
         String mensagem = request.mensagem() != null && !request.mensagem().isBlank()
                 ? request.mensagem()
                 : "Acesse a plataforma para ver os detalhes e os feedbacks desta etapa.";
+        String agendamentoHtml = montarAgendamentoHtml(request);
 
         String htmlContent = """
                 <!DOCTYPE html>
@@ -146,6 +151,8 @@ public class CandidaturaEmailService implements CandidaturaNotifier {
                                                 %s
                                             </p>
 
+                                            %s
+
                                         </td>
                                     </tr>
 
@@ -181,12 +188,15 @@ public class CandidaturaEmailService implements CandidaturaNotifier {
                         request.vagaTitulo(),
                         etapa,
                         status,
-                        mensagem);
+                        mensagem,
+                        agendamentoHtml);
 
         CreateEmailOptions sendEmailRequest = CreateEmailOptions.builder()
                 .from("Plataforma <noreply@gabrieldiassantiago.dev>")
                 .to(request.email())
-                .subject("Atualização da sua candidatura - " + request.vagaTitulo())
+                    .subject(request.agendamentoTitulo() != null
+                        ? "Convite para reunião - " + request.agendamentoTitulo()
+                        : "Atualização da sua candidatura - " + request.vagaTitulo())
                 .html(htmlContent)
                 .build();
 
@@ -195,5 +205,42 @@ public class CandidaturaEmailService implements CandidaturaNotifier {
         } catch (ResendException e) {
             e.printStackTrace();
         }
+    }
+
+    private String montarAgendamentoHtml(CandidaturaEmailRequest request) {
+        if (request.agendamentoLink() == null || request.agendamentoInicio() == null) {
+            return "";
+        }
+
+        String titulo = escapar(request.agendamentoTitulo());
+        String data = request.agendamentoInicio().format(AGENDAMENTO_FORMATTER);
+        String duracao = String.valueOf(request.agendamentoDuracaoMinutos());
+        String link = escapar(request.agendamentoLink());
+
+        return """
+                <div style="
+                    background-color: #F5F3FF;
+                    border: 1px solid #DDD6FE;
+                    border-radius: 12px;
+                    padding: 24px;
+                    margin-top: 24px;
+                ">
+                    <p style="margin:0 0 8px 0; color:#6D28D9; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;">Convite de reunião</p>
+                    <p style="margin:0 0 12px 0; color:#222222; font-size:18px; line-height:26px; font-weight:600;">%s</p>
+                    <p style="margin:0 0 20px 0; color:#686868; font-size:14px; line-height:22px;">%s · %s minutos</p>
+                    <a href="%s" style="display:inline-block; background:#7C3AED; color:#FFFFFF; text-decoration:none; border-radius:8px; padding:12px 18px; font-size:14px; font-weight:600;">Entrar na reunião</a>
+                </div>
+                """.formatted(titulo, data, duracao, link);
+    }
+
+    private String escapar(String valor) {
+        if (valor == null) {
+            return "";
+        }
+        return valor.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 }

@@ -2,6 +2,7 @@ package com.unisal.processoseletivoapi.mensageria.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import java.time.LocalDateTime;
 
 /**
  * Payload publicado na fila "candidatura.atualizacao" sempre que a etapa ou o
@@ -21,5 +22,13 @@ public record CandidaturaEmailRequest(
 
         String statusDescricao,
 
-        String mensagem) {
+        String mensagem,
+
+        String agendamentoTitulo,
+
+        LocalDateTime agendamentoInicio,
+
+        Integer agendamentoDuracaoMinutos,
+
+        String agendamentoLink) {
 }

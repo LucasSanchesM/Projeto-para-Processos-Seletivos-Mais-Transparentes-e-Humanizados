@@ -19,14 +19,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.unisal.processoseletivoapi.candidatura.dto.AvancarEtapaDto;
+import com.unisal.processoseletivoapi.candidatura.dto.AgendamentoResponse;
 import com.unisal.processoseletivoapi.candidatura.dto.CandidaturaDetalheResponse;
 import com.unisal.processoseletivoapi.candidatura.dto.CandidaturaResponse;
+import com.unisal.processoseletivoapi.candidatura.dto.CreateAgendamentoDto;
 import com.unisal.processoseletivoapi.candidatura.dto.CreateFeedbackDto;
 import com.unisal.processoseletivoapi.candidatura.dto.DecidirCandidaturaDto;
 import com.unisal.processoseletivoapi.candidatura.dto.FeedbackResponse;
 import com.unisal.processoseletivoapi.candidatura.entity.EtapaProcesso;
 import com.unisal.processoseletivoapi.candidatura.entity.StatusCandidatura;
 import com.unisal.processoseletivoapi.candidatura.service.CandidaturaFeedbackService;
+import com.unisal.processoseletivoapi.candidatura.service.CandidaturaAgendamentoService;
 import com.unisal.processoseletivoapi.candidatura.service.CandidaturaService;
 
 import jakarta.validation.Valid;
@@ -42,11 +45,14 @@ public class CandidaturaEmpresaController {
 
     private final CandidaturaService candidaturaService;
     private final CandidaturaFeedbackService feedbackService;
+    private final CandidaturaAgendamentoService agendamentoService;
 
     public CandidaturaEmpresaController(CandidaturaService candidaturaService,
-            CandidaturaFeedbackService feedbackService) {
+            CandidaturaFeedbackService feedbackService,
+            CandidaturaAgendamentoService agendamentoService) {
         this.candidaturaService = candidaturaService;
         this.feedbackService = feedbackService;
+        this.agendamentoService = agendamentoService;
     }
 
     // LISTAR CANDIDATURAS DAS VAGAS DA EMPRESA (com filtros opcionais)
@@ -124,6 +130,49 @@ public class CandidaturaEmpresaController {
         UUID empresaUserId = UUID.fromString(jwt.getSubject());
 
         return ResponseEntity.ok(feedbackService.listarComoEmpresa(empresaUserId, id, etapa));
+    }
+
+    @PostMapping("/{id}/agendamentos")
+    public ResponseEntity<AgendamentoResponse> criarAgendamento(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @Valid @RequestBody CreateAgendamentoDto dto) {
+
+        UUID empresaUserId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(agendamentoService.criar(empresaUserId, id, dto));
+    }
+
+    @GetMapping("/{id}/agendamentos")
+    public ResponseEntity<List<AgendamentoResponse>> listarAgendamentos(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id) {
+
+        UUID empresaUserId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(agendamentoService.listarComoEmpresa(empresaUserId, id));
+    }
+
+    @PutMapping("/{id}/agendamentos/{agendamentoId}")
+    public ResponseEntity<AgendamentoResponse> atualizarAgendamento(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @PathVariable UUID agendamentoId,
+            @Valid @RequestBody CreateAgendamentoDto dto) {
+
+        UUID empresaUserId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(agendamentoService.atualizar(empresaUserId, id, agendamentoId, dto));
+    }
+
+    @DeleteMapping("/{id}/agendamentos/{agendamentoId}")
+    public ResponseEntity<Void> cancelarAgendamento(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @PathVariable UUID agendamentoId,
+            @RequestParam(required = false) String motivo) {
+
+        UUID empresaUserId = UUID.fromString(jwt.getSubject());
+        agendamentoService.cancelar(empresaUserId, id, agendamentoId, motivo);
+        return ResponseEntity.noContent().build();
     }
 
     // EDITAR UM FEEDBACK

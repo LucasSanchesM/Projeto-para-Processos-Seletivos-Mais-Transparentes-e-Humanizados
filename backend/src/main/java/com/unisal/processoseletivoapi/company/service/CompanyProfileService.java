@@ -26,8 +26,7 @@ public class CompanyProfileService {
 
     @Transactional
     public CompanyProfileDto findProfileByUserId(UUID userId) {
-        var profile = companyProfileRepository.findByUserId(userId).orElseThrow(()-> new BusinessException(HttpStatus.NOT_FOUND, "Não há um perfil associado a esse ID"));
-        return toDto(profile);
+        return toDto(companyProfileRepository.findByUserId(userId).orElseThrow(()-> new BusinessException(HttpStatus.NOT_FOUND, "Não há um perfil associado a esse ID")));
     }
 
     @Transactional

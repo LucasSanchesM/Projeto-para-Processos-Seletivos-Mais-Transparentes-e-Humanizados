@@ -10,6 +10,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,10 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.unisal.processoseletivoapi.candidatura.dto.CandidaturaDetalheResponse;
 import com.unisal.processoseletivoapi.candidatura.dto.CandidaturaResponse;
+import com.unisal.processoseletivoapi.candidatura.dto.AgendamentoResponse;
 import com.unisal.processoseletivoapi.candidatura.dto.CreateCandidatura;
 import com.unisal.processoseletivoapi.candidatura.dto.FeedbackResponse;
 import com.unisal.processoseletivoapi.candidatura.entity.EtapaProcesso;
 import com.unisal.processoseletivoapi.candidatura.service.CandidaturaFeedbackService;
+import com.unisal.processoseletivoapi.candidatura.service.CandidaturaAgendamentoService;
 import com.unisal.processoseletivoapi.candidatura.service.CandidaturaService;
 
 import jakarta.validation.Valid;
@@ -35,11 +38,14 @@ public class CandidaturaController {
 
     private final CandidaturaService candidaturaService;
     private final CandidaturaFeedbackService feedbackService;
+    private final CandidaturaAgendamentoService agendamentoService;
 
     public CandidaturaController(CandidaturaService candidaturaService,
-            CandidaturaFeedbackService feedbackService) {
+            CandidaturaFeedbackService feedbackService,
+            CandidaturaAgendamentoService agendamentoService) {
         this.candidaturaService = candidaturaService;
         this.feedbackService = feedbackService;
+        this.agendamentoService = agendamentoService;
     }
 
     // SE CANDIDATAR A UMA VAGA
@@ -85,6 +91,35 @@ public class CandidaturaController {
         UUID userId = UUID.fromString(jwt.getSubject());
 
         return ResponseEntity.ok(feedbackService.listarComoCandidato(userId, id, etapa));
+    }
+
+    @GetMapping("/{id}/agendamentos")
+    public ResponseEntity<List<AgendamentoResponse>> listarAgendamentos(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id) {
+
+        UUID userId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(agendamentoService.listarComoCandidato(userId, id));
+    }
+
+    @PatchMapping("/{id}/agendamentos/{agendamentoId}/confirmar")
+    public ResponseEntity<AgendamentoResponse> confirmarAgendamento(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @PathVariable UUID agendamentoId) {
+
+        UUID userId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(agendamentoService.confirmar(userId, id, agendamentoId));
+    }
+
+    @PatchMapping("/{id}/agendamentos/{agendamentoId}/recusar")
+    public ResponseEntity<AgendamentoResponse> recusarAgendamento(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @PathVariable UUID agendamentoId) {
+
+        UUID userId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(agendamentoService.recusar(userId, id, agendamentoId));
     }
 
     // DESISTIR DO PROCESSO
