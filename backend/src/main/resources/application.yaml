@@ -6,9 +6,9 @@ jwt:
 
 spring:
   application:
-    name: processoseletivoapi
+    name: selectaapi
   config:
-    import: "optional:file:./backend/.env[.properties]"
+    import: "optional:file:./.env[.properties],optional:file:./backend/.env[.properties]"
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
