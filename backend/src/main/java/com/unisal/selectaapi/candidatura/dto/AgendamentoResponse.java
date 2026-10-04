@@ -1,0 +1,27 @@
+package com.unisal.selectaapi.candidatura.dto;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import com.unisal.selectaapi.candidatura.entity.EtapaProcesso;
+import com.unisal.selectaapi.candidatura.entity.StatusAgendamento;
+
+public record AgendamentoResponse(
+        UUID id,
+        UUID candidaturaId,
+        EtapaProcesso etapa,
+        String etapaDescricao,
+        String titulo,
+        String mensagem,
+        LocalDateTime inicio,
+        Integer duracaoMinutos,
+        String link,
+        StatusAgendamento status,
+        String statusDescricao,
+        UUID criadoPorUserId,
+        String criadoPorNome,
+        String motivoCancelamento,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+) {
+}
