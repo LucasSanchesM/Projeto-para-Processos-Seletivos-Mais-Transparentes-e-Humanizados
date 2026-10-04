@@ -75,3 +75,12 @@ r2:
 resend:
   api:
     key: ${API_KEY}
+recommendation:
+  log-details: ${RECOMMENDATION_LOG_DETAILS:false}
+  cohere:
+    enabled: ${COHERE_ENABLED:false}
+    api-key: ${COHERE_API_KEY:}
+    model: ${COHERE_EMBED_MODEL:embed-v4.0}
+logging:
+  pattern:
+    level: "%5p [recomendacao:%X{recommendationId:-sem-id}]"

@@ -64,15 +64,28 @@ public class CandidateProfile {
     private String githubUrl;
     private String portfolioUrl;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "candidate_skills", joinColumns = @JoinColumn(name = "candidate_profile_id"))
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+        name = "candidate_skills",
+        joinColumns = @JoinColumn(name = "candidate_profile_id")
+    )
     @Column(name = "skill")
     private List<String> skills = new ArrayList<>();
 
-    @OneToMany(mappedBy = "candidateProfile", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(
+        mappedBy = "candidateProfile",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true,
+        fetch = FetchType.LAZY
+    )
     private List<CandidateExperience> experiences = new ArrayList<>();
 
-    @OneToMany(mappedBy = "candidateProfile", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(
+        mappedBy = "candidateProfile",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true,
+        fetch = FetchType.LAZY
+    )
     private List<CandidateProject> projects = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)

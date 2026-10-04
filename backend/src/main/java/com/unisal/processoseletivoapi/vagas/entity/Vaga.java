@@ -11,6 +11,7 @@ import com.unisal.processoseletivoapi.vagas.VagaRole;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -21,6 +22,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -68,8 +70,13 @@ public class Vaga {
     @Column(nullable = false)
     private ModalidadeVaga modalidade;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "job_meta_tags", joinColumns = @JoinColumn(name = "job_id"))
+    @Column(name = "tag", nullable = false, length = 80)
+    private List<String> metaTags = new ArrayList<>();
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = true)
     private NivelExperiencia nivelExperiencia;
 
     @Column(nullable = false)
@@ -94,6 +101,14 @@ public class Vaga {
     public Vaga() {
     }
 
+    public List<String> getMetaTags() {
+        return metaTags;
+    }
+
+    public void setMetaTags(List<String> metaTags) {
+        this.metaTags = metaTags == null ? new ArrayList<>() : new ArrayList<>(metaTags);
+    }
+
     public Double getLatitude() {
         return latitude;
     }
@@ -114,6 +129,11 @@ public class Vaga {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+
+        // Compatibilidade com bancos antigos que ainda exigem a coluna legada.
+        if (this.nivelExperiencia == null) {
+            this.nivelExperiencia = NivelExperiencia.JUNIOR;
+        }
 
         if (this.ativa == null) {
             this.ativa = true;

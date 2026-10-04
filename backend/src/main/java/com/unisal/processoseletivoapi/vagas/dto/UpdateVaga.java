@@ -5,7 +5,6 @@ import java.math.BigDecimal;
 
 import com.unisal.processoseletivoapi.vagas.VagaRole;
 import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
-import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
 
 import jakarta.validation.constraints.DecimalMin;
 
@@ -22,7 +21,6 @@ public record UpdateVaga(
     Double longitude,
     VagaRole categoria,
     ModalidadeVaga modalidade,
-    NivelExperiencia nivelExperiencia,
     Boolean ativa
 
 ) {}

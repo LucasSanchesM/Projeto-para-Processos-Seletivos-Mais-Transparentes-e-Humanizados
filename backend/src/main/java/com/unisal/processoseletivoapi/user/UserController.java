@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import jakarta.validation.Valid;
 
@@ -42,19 +44,24 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/me")
+    public ResponseEntity<UserResponseDto> findCurrentUser(@AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(userService.findCurrentUser(UUID.fromString(jwt.getSubject())));
+    }
+
+    @GetMapping("/{id:[0-9a-fA-F-]{36}}")
     public ResponseEntity<UserResponseDto> findUserById(@PathVariable("id") UUID id) {
         var response = userService.findUserById(id);
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:[0-9a-fA-F-]{36}}")
     public ResponseEntity<UserResponseDto> updateUser(@PathVariable("id") UUID id, @Valid @RequestBody UpdateUserDto dto) {
         var response = userService.updateUser(id, dto);
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:[0-9a-fA-F-]{36}}")
     public ResponseEntity<Void> deleteUser(@PathVariable("id") UUID id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();

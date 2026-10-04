@@ -1,6 +1,7 @@
 package com.unisal.processoseletivoapi.candidatura.service;
 
 import java.util.List;
+import java.util.Comparator;
 
 import org.springframework.stereotype.Component;
 
@@ -17,6 +18,7 @@ import com.unisal.processoseletivoapi.candidatura.entity.CandidaturaHistorico;
 import com.unisal.processoseletivoapi.candidatura.entity.EtapaProcesso;
 import com.unisal.processoseletivoapi.company.entity.CompanyProfile;
 import com.unisal.processoseletivoapi.vagas.entity.Vaga;
+import com.unisal.processoseletivoapi.vagas.entity.VagaEtapa;
 import com.unisal.processoseletivoapi.vagas.dto.EtapaVagaResponse;
 
 @Component
@@ -26,12 +28,15 @@ public class CandidaturaMapper {
         Vaga vaga = candidatura.getVaga();
         CompanyProfile empresa = vaga.getEmpresa();
         CandidateProfile candidato = candidatura.getCandidato();
-        List<EtapaVagaResponse> etapasVaga = vaga.getEtapas().isEmpty()
+        List<VagaEtapa> etapasConfiguradas = vaga.getEtapas().stream()
+            .sorted(Comparator.comparing(VagaEtapa::getOrdem))
+            .toList();
+        List<EtapaVagaResponse> etapasVaga = etapasConfiguradas.isEmpty()
             ? EtapaProcesso.etapasConfiguraveisPadrao().stream()
                 .map((etapa) -> new EtapaVagaResponse(
                     etapa, etapa.getDescricao(), EtapaProcesso.etapasConfiguraveisPadrao().indexOf(etapa) + 1))
                 .toList()
-            : vaga.getEtapas().stream()
+            : etapasConfiguradas.stream()
                 .map((etapa) -> new EtapaVagaResponse(
                     etapa.getEtapa(), etapa.getEtapa().getDescricao(), etapa.getOrdem()))
                 .toList();

@@ -32,6 +32,9 @@ public class CompanyProfile {
     @Column(nullable = false, name="company_name")
     private String companyName;
 
+    @Column(name = "logo_key")
+    private String logoKey;
+
     @Column(unique = true, name="cnpj")
     private String cnpj;
 
@@ -115,6 +118,10 @@ public class CompanyProfile {
     public void setUser(User user) {
         this.user = user;
     }
+
+    public String getLogoKey() { return logoKey; }
+
+    public void setLogoKey(String logoKey) { this.logoKey = logoKey; }
 
     public String getCompanyName() {
         return companyName;

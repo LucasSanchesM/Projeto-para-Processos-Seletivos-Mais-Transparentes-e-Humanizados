@@ -9,6 +9,7 @@ public record UserResponseDto(
     String email,
     String role,
     Boolean active,
+    String avatarUrl,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {}

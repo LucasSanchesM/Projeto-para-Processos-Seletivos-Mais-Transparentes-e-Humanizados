@@ -133,6 +133,10 @@ public class UserService {
         return mapToResponse(user);
     }
 
+    public UserResponseDto findCurrentUser(UUID id) {
+        return findUserById(id);
+    }
+
     public UserResponseDto updateUser(UUID id, UpdateUserDto dto) {
         var user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "Usuário não encontrado"));
@@ -187,6 +191,7 @@ public class UserService {
                 user.getEmail(),
                 user.getRole(),
                 user.getActive(),
+                user.getAvatarUrl(),
                 user.getCreatedAt(),
                 user.getUpdatedAt());
     }

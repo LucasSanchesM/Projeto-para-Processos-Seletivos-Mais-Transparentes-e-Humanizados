@@ -25,9 +25,9 @@ import com.unisal.processoseletivoapi.candidate.entity.CandidateProject;
 import com.unisal.processoseletivoapi.candidate.repository.CandidateExperienceRepository;
 import com.unisal.processoseletivoapi.candidate.repository.CandidateProfileRepository;
 import com.unisal.processoseletivoapi.candidate.repository.CandidateProjectRepository;
-import com.unisal.processoseletivoapi.candidate.storage.FileStorage;
-import com.unisal.processoseletivoapi.candidate.storage.StoredFile;
 import com.unisal.processoseletivoapi.exception.BusinessException;
+import com.unisal.processoseletivoapi.storage.FileStorage;
+import com.unisal.processoseletivoapi.storage.StoredFile;
 import com.unisal.processoseletivoapi.user.UserRepository;
 
 @Service
@@ -67,6 +67,7 @@ public class CandidateProfileService {
         }
         
         CandidateProfile profile = new CandidateProfile(user);
+        profile.setProfileImageUrl(user.getAvatarUrl());
         profile.setHeadline(dto.headline());
         profile.setSummary(dto.summary());
         profile.setPhone(dto.phone());

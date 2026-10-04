@@ -15,12 +15,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import com.unisal.processoseletivoapi.vagas.dto.CreateVaga;
 import com.unisal.processoseletivoapi.vagas.dto.UpdateVaga;
 import com.unisal.processoseletivoapi.vagas.dto.VagaResponse;
+import com.unisal.processoseletivoapi.vagas.dto.SearchMetadataRequest;
+import com.unisal.processoseletivoapi.vagas.entity.SearchMetadata;
+import com.unisal.processoseletivoapi.vagas.repository.SearchMetadataRepository;
 import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
-import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
 import com.unisal.processoseletivoapi.vagas.services.VagaService;
 
 import jakarta.validation.Valid;
@@ -29,11 +33,16 @@ import jakarta.validation.constraints.NotNull;
 @RestController
 @RequestMapping("/vagas")
 public class VagaController {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(VagaController.class);
+    @org.springframework.beans.factory.annotation.Value("${recommendation.log-details:false}")
+    private boolean logDetails;
 
     private final VagaService vagaService;
+    private final SearchMetadataRepository searchMetadataRepository;
 
-    public VagaController(VagaService vagaService) {
+    public VagaController(VagaService vagaService, SearchMetadataRepository searchMetadataRepository) {
         this.vagaService = vagaService;
+        this.searchMetadataRepository = searchMetadataRepository;
     }
 
     // CRIAR UMA VAGA
@@ -54,20 +63,40 @@ public class VagaController {
             @RequestParam(required = false) String titulo,
             @RequestParam(required = false) VagaRole categoria,
             @RequestParam(required = false) ModalidadeVaga modalidade,
-            @RequestParam(required = false) NivelExperiencia nivelExperiencia,
             @RequestParam(required = false) BigDecimal salarioMin,
             @RequestParam(required = false) BigDecimal salarioMax,
             @RequestParam(required = false) String cidade,
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) Boolean ativa,
-            @RequestParam(required = false) UUID companyProfileId) {
+            @RequestParam(required = false) UUID companyProfileId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @AuthenticationPrincipal Jwt jwt) {
 
         var vagas = vagaService.findAllWithFilters(
-                titulo, categoria, modalidade, nivelExperiencia,
-                salarioMin, salarioMax, cidade, estado, ativa, companyProfileId
+                titulo, categoria, modalidade,
+                salarioMin, salarioMax, cidade, estado, ativa, companyProfileId,
+                jwt == null ? null : UUID.fromString(jwt.getSubject()), Math.max(0, page), Math.min(Math.max(size, 1), 50)
         );
 
+        log.info("GET /vagas resultado quantidade={} vagasIds={}", vagas.size(),
+            vagas.stream().map(vaga -> vaga.id()).toList());
+        if (logDetails) log.info("GET /vagas corpoResposta={}",
+            com.unisal.processoseletivoapi.vagas.services.RecommendationLog.json(vagas));
         return ResponseEntity.ok(vagas);
+    }
+
+    @PostMapping("/search-metadata")
+    public ResponseEntity<Void> recordSearchMetadata(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody SearchMetadataRequest request) {
+        SearchMetadata metadata = new SearchMetadata();
+        metadata.setUserId(jwt == null ? null : UUID.fromString(jwt.getSubject()));
+        metadata.setQuery(request.query());
+        metadata.setSearchTag(request.searchTag().trim().toLowerCase());
+        metadata.setMetadataJson(request.metadataJson());
+        searchMetadataRepository.save(metadata);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     // LISTAR VAGAS DE UMA EMPRESA ESPECÍFICA

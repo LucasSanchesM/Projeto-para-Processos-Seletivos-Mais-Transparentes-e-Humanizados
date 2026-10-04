@@ -38,8 +38,11 @@ public class CandidateProject {
 
     private String projectUrl;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "project_tools_skills", joinColumns = @JoinColumn(name = "project_id"))
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(
+        name = "project_tools_skills",
+        joinColumns = @JoinColumn(name = "project_id")
+    )
     @Column(name = "tool_or_skill")
     private List<String> toolsAndSkills = new ArrayList<>();
 
@@ -49,7 +52,12 @@ public class CandidateProject {
     public CandidateProject() {
     }
 
-    public CandidateProject(CandidateProfile candidateProfile, String title, String description, String projectUrl, List<String> toolsAndSkills) {
+    public CandidateProject(
+            CandidateProfile candidateProfile,
+            String title,
+            String description,
+            String projectUrl,
+            List<String> toolsAndSkills) {
         this.candidateProfile = candidateProfile;
         this.title = title;
         this.description = description;
@@ -114,9 +122,5 @@ public class CandidateProject {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 }

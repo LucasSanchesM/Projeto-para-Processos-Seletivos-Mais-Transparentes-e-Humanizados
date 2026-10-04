@@ -8,7 +8,6 @@ import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 
 import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
-import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
 import com.unisal.processoseletivoapi.vagas.entity.Vaga;
 
 import jakarta.persistence.criteria.Predicate;
@@ -22,7 +21,6 @@ public class VagaSpecification {
             String titulo,
             VagaRole categoria,
             ModalidadeVaga modalidade,
-            NivelExperiencia nivelExperiencia,
             BigDecimal salarioMin,
             BigDecimal salarioMax,
             String cidade,
@@ -44,10 +42,6 @@ public class VagaSpecification {
 
             if (modalidade != null) {
                 predicates.add(cb.equal(root.get("modalidade"), modalidade));
-            }
-
-            if (nivelExperiencia != null) {
-                predicates.add(cb.equal(root.get("nivelExperiencia"), nivelExperiencia));
             }
 
             if (salarioMin != null) {

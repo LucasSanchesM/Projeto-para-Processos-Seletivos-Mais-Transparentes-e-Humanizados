@@ -7,7 +7,6 @@ import java.util.UUID;
 
 import com.unisal.processoseletivoapi.vagas.VagaRole;
 import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
-import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
 
 public record VagaResponse(
 
@@ -34,8 +33,7 @@ public record VagaResponse(
     // Perfil da vaga
     VagaRole categoria,
     ModalidadeVaga modalidade,
-    NivelExperiencia nivelExperiencia,
-
+    List<String> metaTags,
     List<EtapaVagaResponse> etapas,
 
     Boolean ativa,

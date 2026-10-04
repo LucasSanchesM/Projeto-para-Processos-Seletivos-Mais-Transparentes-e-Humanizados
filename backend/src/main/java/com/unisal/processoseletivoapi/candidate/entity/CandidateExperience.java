@@ -47,7 +47,14 @@ public class CandidateExperience {
     public CandidateExperience() {
     }
 
-    public CandidateExperience(CandidateProfile candidateProfile, String companyName, String role, String description, LocalDate startDate, LocalDate endDate, Boolean isCurrent) {
+    public CandidateExperience(
+            CandidateProfile candidateProfile,
+            String companyName,
+            String role,
+            String description,
+            LocalDate startDate,
+            LocalDate endDate,
+            Boolean isCurrent) {
         this.candidateProfile = candidateProfile;
         this.companyName = companyName;
         this.role = role;
@@ -131,9 +138,5 @@ public class CandidateExperience {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 }

@@ -45,9 +45,9 @@ import com.unisal.processoseletivoapi.candidate.repository.CandidateExperienceRe
 import com.unisal.processoseletivoapi.candidate.repository.CandidateProfileRepository;
 import com.unisal.processoseletivoapi.candidate.repository.CandidateProjectRepository;
 import com.unisal.processoseletivoapi.candidate.service.CandidateProfileService;
-import com.unisal.processoseletivoapi.candidate.storage.FileStorage;
-import com.unisal.processoseletivoapi.candidate.storage.StoredFile;
 import com.unisal.processoseletivoapi.exception.BusinessException;
+import com.unisal.processoseletivoapi.storage.FileStorage;
+import com.unisal.processoseletivoapi.storage.StoredFile;
 import com.unisal.processoseletivoapi.user.UserRepository;
 import com.unisal.processoseletivoapi.user.entity.User;
 

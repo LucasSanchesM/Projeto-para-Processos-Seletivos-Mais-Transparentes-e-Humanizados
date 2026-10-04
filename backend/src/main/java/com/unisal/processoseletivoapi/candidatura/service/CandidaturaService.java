@@ -349,7 +349,9 @@ public class CandidaturaService {
                         throw new BusinessException(HttpStatus.FORBIDDEN,
                                 "Apenas candidatos podem se candidatar a vagas");
                     }
-                    return candidateProfileRepository.save(new CandidateProfile(user));
+                    CandidateProfile profile = new CandidateProfile(user);
+                    profile.setProfileImageUrl(user.getAvatarUrl());
+                    return candidateProfileRepository.save(profile);
                 });
     }
 }

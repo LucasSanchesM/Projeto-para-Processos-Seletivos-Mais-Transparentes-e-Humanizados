@@ -1,4 +1,4 @@
-package com.unisal.processoseletivoapi.candidate.storage;
+package com.unisal.processoseletivoapi.storage;
 
 import java.net.URI;
 import org.slf4j.Logger;

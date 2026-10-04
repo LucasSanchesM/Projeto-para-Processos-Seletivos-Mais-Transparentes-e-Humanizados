@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.unisal.processoseletivoapi.company.entity.CompanyProfile;
 import com.unisal.processoseletivoapi.candidatura.entity.EtapaProcesso;
 import com.unisal.processoseletivoapi.company.repository.CompanyProfileRepository;
+import com.unisal.processoseletivoapi.candidate.repository.CandidateProfileRepository;
 import com.unisal.processoseletivoapi.exception.BusinessException;
 import com.unisal.processoseletivoapi.geo.GeoCodingService;
 import com.unisal.processoseletivoapi.vagas.VagaRepository;
@@ -22,7 +23,6 @@ import com.unisal.processoseletivoapi.vagas.dto.EtapaVagaResponse;
 import com.unisal.processoseletivoapi.vagas.dto.UpdateVaga;
 import com.unisal.processoseletivoapi.vagas.dto.VagaResponse;
 import com.unisal.processoseletivoapi.vagas.entity.ModalidadeVaga;
-import com.unisal.processoseletivoapi.vagas.entity.NivelExperiencia;
 import com.unisal.processoseletivoapi.vagas.entity.Vaga;
 import com.unisal.processoseletivoapi.vagas.entity.VagaEtapa;
 
@@ -32,14 +32,19 @@ public class VagaService {
     private final VagaRepository vagaRepository;
     private final CompanyProfileRepository companyProfileRepository;
     private final GeoCodingService geoCodingService;
+    private final CandidateProfileRepository candidateProfileRepository;
+    private final JobRecommendationService recommendationService;
 
     
 
-    public VagaService(VagaRepository vagaRepository, CompanyProfileRepository companyProfileRepository,
-            GeoCodingService geoCodingService) {
+        public VagaService(VagaRepository vagaRepository, CompanyProfileRepository companyProfileRepository,
+            GeoCodingService geoCodingService, CandidateProfileRepository candidateProfileRepository,
+            JobRecommendationService recommendationService) {
         this.vagaRepository = vagaRepository;
         this.companyProfileRepository = companyProfileRepository;
         this.geoCodingService = geoCodingService;
+        this.candidateProfileRepository = candidateProfileRepository;
+        this.recommendationService = recommendationService;
     }
 
     @Transactional
@@ -65,7 +70,7 @@ public class VagaService {
         vaga.setLatitude(dto.latitude());
         vaga.setCategoria(dto.categoria());
         vaga.setModalidade(dto.modalidade());
-        vaga.setNivelExperiencia(dto.nivelExperiencia());
+        vaga.setMetaTags(normalizeTags(dto.metaTags()));
         vaga.setAtiva(true);
 
         configurarEtapas(vaga, dto.etapas());
@@ -75,24 +80,32 @@ public class VagaService {
         return mapToResponse(savedVaga);
     }
 
+    @Transactional(readOnly = true)
     public List<VagaResponse> findAllWithFilters(
             String titulo,
             VagaRole categoria,
             ModalidadeVaga modalidade,
-            NivelExperiencia nivelExperiencia,
             BigDecimal salarioMin,
             BigDecimal salarioMax,
             String cidade,
             String estado,
             Boolean ativa,
             UUID companyProfileId
+                , UUID candidateUserId, int page, int size
     ) {
         var spec = VagaSpecification.withFilters(
-                titulo, categoria, modalidade, nivelExperiencia,
+                titulo, categoria, modalidade,
                 salarioMin, salarioMax, cidade, estado, ativa, companyProfileId
         );
 
-        return vagaRepository.findAll(spec)
+        var profile = candidateUserId == null ? null
+            : candidateProfileRepository.findByUserId(candidateUserId).orElse(null);
+        List<Vaga> vagas = recommendationService.rank(vagaRepository.findAll(spec), profile);
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        int from = (int) Math.min((long) Math.max(page, 0) * safeSize, vagas.size());
+        int to = Math.min(from + safeSize, vagas.size());
+
+        return vagas.subList(from, to)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
@@ -164,10 +177,6 @@ public class VagaService {
             vaga.setModalidade(dto.modalidade());
         }
 
-        if (dto.nivelExperiencia() != null) {
-            vaga.setNivelExperiencia(dto.nivelExperiencia());
-        }
-
         if (dto.ativa() != null) {
             vaga.setAtiva(dto.ativa());
         }
@@ -235,12 +244,22 @@ public class VagaService {
                 vaga.getLongitude(),
                 vaga.getCategoria(),
                 vaga.getModalidade(),
-                vaga.getNivelExperiencia(),
+                vaga.getMetaTags(),
                 etapasResponse,
                 vaga.getAtiva(),
                 vaga.getCreatedAt(),
                 vaga.getUpdatedAt()
         );
+    }
+
+    private List<String> normalizeTags(List<String> tags) {
+        if (tags == null) return List.of();
+        return tags.stream()
+                .filter(tag -> tag != null && !tag.isBlank())
+                .map(tag -> tag.trim().toLowerCase())
+                .distinct()
+                .limit(20)
+                .toList();
     }
 
             private void configurarEtapas(Vaga vaga, List<EtapaProcesso> etapasInformadas) {

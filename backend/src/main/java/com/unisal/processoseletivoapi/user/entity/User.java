@@ -36,6 +36,9 @@ public class User {
     @Column(nullable = false)
     private Boolean active;
 
+    @Column(name = "avatar_url", length = 2048)
+    private String avatarUrl;
+
     @Column(name = "linkedin_subject", unique = true)
     private String linkedinSubject;
 
@@ -122,6 +125,14 @@ public class User {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 
     public String getLinkedinSubject() {

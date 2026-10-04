@@ -42,8 +42,14 @@ public class GoogleOAuthService implements OAuthProviderService{
         //Primeiro eu vejo se há algum perfil associado a esse subject
         var googleAccount = userRepository.findByGoogleSubject(subject);
         if(googleAccount.isPresent()){
-            verifyCandidateRole(googleAccount.get());
-            return googleAccount.get();
+            User user = googleAccount.get();
+            verifyCandidateRole(user);
+            if ((user.getAvatarUrl() == null || user.getAvatarUrl().isBlank())
+                    && oidcUser.getPicture() != null && !oidcUser.getPicture().isBlank()) {
+                user.setAvatarUrl(oidcUser.getPicture().trim());
+                userRepository.save(user);
+            }
+            return user;
         }
         String email = requiredClaim(oidcUser.getEmail(), "Google nao retornou seu email");
         if(!Boolean.TRUE.equals(oidcUser.getEmailVerified())){
@@ -57,11 +63,16 @@ public class GoogleOAuthService implements OAuthProviderService{
             User user = existingUser.get();
             verifyCandidateRole(user);
             user.setGoogleSubject(subject);
+            if ((user.getAvatarUrl() == null || user.getAvatarUrl().isBlank())
+                    && oidcUser.getPicture() != null && !oidcUser.getPicture().isBlank()) {
+                user.setAvatarUrl(oidcUser.getPicture().trim());
+            }
             if(!Boolean.TRUE.equals(user.getActive())){
                 user.setActive(true);
                 verificationCodeService.removeCode(user);
             }
-            return userRepository.save(user);
+            User savedUser = userRepository.save(user);
+            return savedUser;
         }
 
         User user = new User();
@@ -71,7 +82,9 @@ public class GoogleOAuthService implements OAuthProviderService{
         user.setActive(true);
         user.setRole(UserRole.CANDIDATE.name());
         user.setGoogleSubject(subject);
-        return userRepository.save(user);
+        user.setAvatarUrl(oidcUser.getPicture());
+        User savedUser = userRepository.save(user);
+        return savedUser;
     }
 
     //Esse metodo daqui ele verifica se a role do candidato utilizado é o correto

@@ -92,6 +92,7 @@ public class CompanyRegistrationService {
                 savedUser.getEmail(),
                 savedUser.getRole(),
                 savedUser.getActive(),
+                savedUser.getAvatarUrl(),
                 savedUser.getCreatedAt(),
                 savedUser.getUpdatedAt());
     }
