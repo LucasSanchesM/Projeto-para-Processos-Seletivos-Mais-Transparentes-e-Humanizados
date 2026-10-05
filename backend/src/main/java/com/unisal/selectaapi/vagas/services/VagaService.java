@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.HashSet;
 import java.util.UUID;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.unisal.selectaapi.company.entity.CompanyProfile;
 import com.unisal.selectaapi.candidatura.entity.EtapaProcesso;
 import com.unisal.selectaapi.company.repository.CompanyProfileRepository;
-import com.unisal.selectaapi.candidate.repository.CandidateProfileRepository;
+
 import com.unisal.selectaapi.exception.BusinessException;
 import com.unisal.selectaapi.geo.GeoCodingService;
 import com.unisal.selectaapi.vagas.VagaRepository;
@@ -32,19 +34,12 @@ public class VagaService {
     private final VagaRepository vagaRepository;
     private final CompanyProfileRepository companyProfileRepository;
     private final GeoCodingService geoCodingService;
-    private final CandidateProfileRepository candidateProfileRepository;
-    private final JobRecommendationService recommendationService;
 
-    
-
-        public VagaService(VagaRepository vagaRepository, CompanyProfileRepository companyProfileRepository,
-            GeoCodingService geoCodingService, CandidateProfileRepository candidateProfileRepository,
-            JobRecommendationService recommendationService) {
+    public VagaService(VagaRepository vagaRepository, CompanyProfileRepository companyProfileRepository,
+            GeoCodingService geoCodingService) {
         this.vagaRepository = vagaRepository;
         this.companyProfileRepository = companyProfileRepository;
         this.geoCodingService = geoCodingService;
-        this.candidateProfileRepository = candidateProfileRepository;
-        this.recommendationService = recommendationService;
     }
 
     @Transactional
@@ -90,22 +85,22 @@ public class VagaService {
             String cidade,
             String estado,
             Boolean ativa,
-            UUID companyProfileId
-                , UUID candidateUserId, int page, int size
+            UUID companyProfileId,
+            int page,
+            int size
     ) {
         var spec = VagaSpecification.withFilters(
                 titulo, categoria, modalidade,
                 salarioMin, salarioMax, cidade, estado, ativa, companyProfileId
         );
 
-        var profile = candidateUserId == null ? null
-            : candidateProfileRepository.findByUserId(candidateUserId).orElse(null);
-        List<Vaga> vagas = recommendationService.rank(vagaRepository.findAll(spec), profile);
-        int safeSize = Math.min(Math.max(size, 1), 50);
-        int from = (int) Math.min((long) Math.max(page, 0) * safeSize, vagas.size());
-        int to = Math.min(from + safeSize, vagas.size());
+        var pageable = PageRequest.of(
+                Math.max(page, 0),
+                Math.min(Math.max(size, 1), 50),
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
 
-        return vagas.subList(from, to)
+        return vagaRepository.findAll(spec, pageable)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();

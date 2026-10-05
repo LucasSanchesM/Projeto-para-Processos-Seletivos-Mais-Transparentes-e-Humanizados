@@ -192,7 +192,7 @@ public class CandidaturaEmailService implements CandidaturaNotifier {
                         agendamentoHtml);
 
         CreateEmailOptions sendEmailRequest = CreateEmailOptions.builder()
-                .from("Plataforma <noreply@gabrieldiassantiago.dev>")
+                .from("Plataforma <noreply@gabrieldias.tech>")
                 .to(request.email())
                     .subject(request.agendamentoTitulo() != null
                         ? "Convite para reunião - " + request.agendamentoTitulo()

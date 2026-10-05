@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-import com.unisal.selectaapi.vagas.services.RecommendationLog;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,9 +34,7 @@ import jakarta.validation.constraints.NotNull;
 @RestController
 @RequestMapping("/vagas")
 public class VagaController {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(VagaController.class);
-    @org.springframework.beans.factory.annotation.Value("${recommendation.log-details:false}")
-    private boolean logDetails;
+
 
     private final VagaService vagaService;
     private final SearchMetadataRepository searchMetadataRepository;
@@ -71,19 +69,14 @@ public class VagaController {
             @RequestParam(required = false) Boolean ativa,
             @RequestParam(required = false) UUID companyProfileId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "12") int size,
-            @AuthenticationPrincipal Jwt jwt) {
+            @RequestParam(defaultValue = "12") int size) {
 
         var vagas = vagaService.findAllWithFilters(
                 titulo, categoria, modalidade,
                 salarioMin, salarioMax, cidade, estado, ativa, companyProfileId,
-                jwt == null ? null : UUID.fromString(jwt.getSubject()), Math.max(0, page), Math.min(Math.max(size, 1), 50)
+                page, size
         );
 
-        log.info("GET /vagas resultado quantidade={} vagasIds={}", vagas.size(),
-            vagas.stream().map(vaga -> vaga.id()).toList());
-        if (logDetails) log.info("GET /vagas corpoResposta={}",
-            RecommendationLog.json(vagas));
         return ResponseEntity.ok(vagas);
     }
 

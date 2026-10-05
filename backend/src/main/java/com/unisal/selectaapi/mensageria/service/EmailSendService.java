@@ -179,7 +179,7 @@ public class EmailSendService implements EmailNotifier {
                 .formatted(request.code());
 
         CreateEmailOptions sendEmailRequest = CreateEmailOptions.builder()
-                .from("Plataforma <noreply@gabrieldiassantiago.dev>")
+                .from("Plataforma <noreply@gabrieldias.tech>")
                 .to(request.email())
                 .subject("Código de Verificação - Processo Seletivo")
                 .html(htmlContent)

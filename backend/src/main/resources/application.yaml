@@ -7,17 +7,21 @@ jwt:
 spring:
   application:
     name: selectaapi
+
   config:
     import: "optional:file:./.env[.properties],optional:file:./backend/.env[.properties]"
+
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
+
   servlet:
     multipart:
       max-file-size: 5MB
       max-request-size: 6MB
+
   jpa:
     show-sql: true
     hibernate:
@@ -25,11 +29,15 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST}
     port: ${SPRING_RABBITMQ_PORT}
     username: ${SPRING_RABBITMQ_USERNAME}
     password: ${SPRING_RABBITMQ_PASSWORD}
+    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
+    ssl:
+      enabled: ${SPRING_RABBITMQ_SSL_ENABLED:false}
     listener:
       simple:
         default-requeue-rejected: false
@@ -38,6 +46,7 @@ spring:
           max-retries: 3
           multiplier: 10
           max-interval: 10000ms
+
   security:
     oauth2:
       client:
@@ -46,8 +55,8 @@ spring:
             client-id: ${GOOGLE_CLIENT_ID:google-client-id-not-configured}
             client-secret: ${GOOGLE_SECRET_KEY:google-client-secret-key-is-not-configured}
             scope:
-            - profile
-            - email
+              - profile
+              - email
 
           linkedin:
             client-id: ${LINKEDIN_CLIENT_ID:linkedin-client-id-not-configured}
@@ -61,26 +70,21 @@ spring:
               - openid
               - profile
               - email
+
         provider:
           linkedin:
             issuer-uri: https://www.linkedin.com/oauth
+
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
 r2:
   endpoint: ${R2_ENDPOINT:}
   access-key-id: ${R2_ACCESS_KEY_ID:}
   secret-access-key: ${R2_SECRET_ACCESS_KEY:}
   bucket: ${R2_BUCKET:}
   public-base-url: ${R2_PUBLIC_BASE_URL:}
+
 resend:
   api:
     key: ${API_KEY}
-recommendation:
-  log-details: ${RECOMMENDATION_LOG_DETAILS:false}
-  cohere:
-    enabled: ${COHERE_ENABLED:false}
-    api-key: ${COHERE_API_KEY:}
-    model: ${COHERE_EMBED_MODEL:embed-v4.0}
-logging:
-  pattern:
-    level: "%5p [recomendacao:%X{recommendationId:-sem-id}]"

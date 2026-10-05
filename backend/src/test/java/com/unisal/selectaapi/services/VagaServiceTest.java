@@ -10,7 +10,6 @@ import com.unisal.selectaapi.vagas.VagaRepository;
 import com.unisal.selectaapi.vagas.VagaRole;
 import com.unisal.selectaapi.vagas.dto.CreateVagaDto;
 import com.unisal.selectaapi.vagas.entity.ModalidadeVaga;
-import com.unisal.selectaapi.vagas.entity.NivelExperiencia;
 import com.unisal.selectaapi.vagas.entity.Vaga;
 import com.unisal.selectaapi.vagas.services.VagaService;
 import org.junit.jupiter.api.BeforeEach;
