@@ -4,6 +4,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.List;
 
+import jakarta.servlet.http.Cookie;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -87,6 +90,27 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    @Bean
+    public BearerTokenResolver bearerTokenResolver(){
+        var token = new DefaultBearerTokenResolver();
+        return request -> {
+            if (request.getRequestURI().startsWith("/ws")) {
+
+                if (request.getCookies() != null) {
+                    for (Cookie cookie : request.getCookies()) {
+                        if (cookie.getName().equals("token")) {
+                            return cookie.getValue();
+                        }
+                    }
+                }
+
+                return null;
+            }
+
+            return token.resolve(request); // REST continua como antes
+        };
     }
 
     @Bean
