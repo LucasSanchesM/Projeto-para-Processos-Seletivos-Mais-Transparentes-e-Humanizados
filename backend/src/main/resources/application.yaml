@@ -77,7 +77,8 @@ spring:
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
-
+  seed:
+    enabled: true
 r2:
   endpoint: ${R2_ENDPOINT:}
   access-key-id: ${R2_ACCESS_KEY_ID:}
