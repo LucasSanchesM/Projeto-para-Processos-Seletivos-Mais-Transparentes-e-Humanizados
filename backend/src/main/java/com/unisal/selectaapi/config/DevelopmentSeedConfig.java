@@ -17,10 +17,9 @@ import com.unisal.selectaapi.candidatura.entity.EtapaProcesso;
 import com.unisal.selectaapi.user.UserRepository;
 import com.unisal.selectaapi.user.UserRole;
 import com.unisal.selectaapi.user.entity.User;
-import com.unisal.selectaapi.vagas.VagaRepository;
+import com.unisal.selectaapi.vagas.repository.VagaRepository;
 import com.unisal.selectaapi.vagas.VagaRole;
 import com.unisal.selectaapi.vagas.entity.ModalidadeVaga;
-import com.unisal.selectaapi.vagas.entity.NivelExperiencia;
 import com.unisal.selectaapi.vagas.entity.Vaga;
 import com.unisal.selectaapi.vagas.entity.VagaEtapa;
 
@@ -102,7 +101,7 @@ public class DevelopmentSeedConfig {
                     "Desenvolver APIs REST com Spring Boot, PostgreSQL e testes automatizados.",
                     "Vale refeicao, plano de saude, trabalho remoto e horario flexivel.",
                     "Sao Paulo", "SP", -23.5505, -46.6333,
-                    VagaRole.DESENVOLVIMENTO_SOFTWARE, ModalidadeVaga.REMOTO, NivelExperiencia.PLENO,
+                    VagaRole.DESENVOLVIMENTO_SOFTWARE, ModalidadeVaga.REMOTO,
                     List.of(EtapaProcesso.TRIAGEM, EtapaProcesso.TESTE_TECNICO,
                             EtapaProcesso.ENTREVISTA_TECNICA, EtapaProcesso.PROPOSTA));
 
@@ -111,7 +110,7 @@ public class DevelopmentSeedConfig {
                     "Construir interfaces acessiveis com React, TypeScript e integracao com APIs.",
                     "Vale refeicao, auxilio home office e plano odontologico.",
                     "Sao Paulo", "SP", -23.5505, -46.6333,
-                    VagaRole.DESENVOLVIMENTO_SOFTWARE, ModalidadeVaga.HIBRIDO, NivelExperiencia.JUNIOR,
+                    VagaRole.DESENVOLVIMENTO_SOFTWARE, ModalidadeVaga.HIBRIDO,
                     List.of(EtapaProcesso.TRIAGEM, EtapaProcesso.ENTREVISTA_RH, EtapaProcesso.TESTE_TECNICO,
                             EtapaProcesso.PROPOSTA));
 
@@ -120,7 +119,7 @@ public class DevelopmentSeedConfig {
                     "Acompanhar cronogramas, riscos, indicadores e comunicacao com clientes.",
                     "Vale alimentacao, plano de saude e programa de desenvolvimento.",
                     "Campinas", "SP", -22.9056, -47.0608,
-                    VagaRole.GESTAO_PROJETOS, ModalidadeVaga.HIBRIDO, NivelExperiencia.PLENO,
+                    VagaRole.GESTAO_PROJETOS, ModalidadeVaga.HIBRIDO,
                     List.of(EtapaProcesso.TRIAGEM, EtapaProcesso.ENTREVISTA_RH, EtapaProcesso.ENTREVISTA_TECNICA,
                             EtapaProcesso.PROPOSTA));
 
@@ -129,7 +128,7 @@ public class DevelopmentSeedConfig {
                     "Apoiar processos de recrutamento, entrevistas e organizacao de documentos.",
                     "Bolsa auxilio, vale transporte e mentoria.",
                     "Campinas", "SP", -22.9056, -47.0608,
-                    VagaRole.RECURSOS_HUMANOS, ModalidadeVaga.PRESENCIAL, NivelExperiencia.ESTAGIO,
+                    VagaRole.RECURSOS_HUMANOS, ModalidadeVaga.PRESENCIAL,
                     List.of(EtapaProcesso.TRIAGEM, EtapaProcesso.ENTREVISTA_RH, EtapaProcesso.PROPOSTA));
 
             createGeneratedJobs(vagaRepository, List.of(techNova, ponteVerde, horizonteSaude, rotaCerta,
@@ -283,13 +282,12 @@ public class DevelopmentSeedConfig {
             String city = cityIndex == 0 ? "Sao Paulo" : cityIndex == 1 ? "Campinas" : "Santos";
             Double latitude = cityIndex == 0 ? -23.5505 : cityIndex == 1 ? -22.9056 : -23.9608;
             Double longitude = cityIndex == 0 ? -46.6333 : cityIndex == 1 ? -47.0608 : -46.3336;
-            NivelExperiencia level = NivelExperiencia.values()[index % NivelExperiencia.values().length];
             ModalidadeVaga modality = ModalidadeVaga.values()[index % ModalidadeVaga.values().length];
             createJobIfAbsent(vagaRepository, company, titles[index],
                     BigDecimal.valueOf(2200L + (index % 8) * 900L),
                     "Atuar em um time colaborativo, contribuindo para resultados e melhoria continua.",
                     "Vale refeicao, plano de saude e horario flexivel.", city, "SP", latitude, longitude,
-                    categories[index], modality, level,
+                    categories[index], modality,
                     List.of(EtapaProcesso.TRIAGEM, EtapaProcesso.ENTREVISTA_RH,
                             EtapaProcesso.ENTREVISTA_TECNICA, EtapaProcesso.PROPOSTA));
         }
@@ -308,7 +306,6 @@ public class DevelopmentSeedConfig {
             Double longitude,
             VagaRole category,
             ModalidadeVaga modality,
-            NivelExperiencia experienceLevel,
             List<EtapaProcesso> etapas) {
 
         Vaga existingJob = vagaRepository.findByEmpresaId(company.getId()).stream()
@@ -337,7 +334,6 @@ public class DevelopmentSeedConfig {
         job.setLongitude(longitude);
         job.setCategoria(category);
         job.setModalidade(modality);
-        job.setNivelExperiencia(experienceLevel);
         job.setAtiva(true);
         job.setEtapas(etapas.stream()
                 .map((etapa) -> new VagaEtapa(job, etapa, etapas.indexOf(etapa) + 1))

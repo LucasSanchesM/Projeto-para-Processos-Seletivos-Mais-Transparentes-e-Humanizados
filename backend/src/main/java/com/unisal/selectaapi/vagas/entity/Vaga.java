@@ -75,10 +75,6 @@ public class Vaga {
     @Column(name = "tag", nullable = false, length = 80)
     private List<String> metaTags = new ArrayList<>();
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = true)
-    private NivelExperiencia nivelExperiencia;
-
     @Column(nullable = false)
     private Boolean ativa;
 
@@ -129,11 +125,6 @@ public class Vaga {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-
-        // Compatibilidade com bancos antigos que ainda exigem a coluna legada.
-        if (this.nivelExperiencia == null) {
-            this.nivelExperiencia = NivelExperiencia.JUNIOR;
-        }
 
         if (this.ativa == null) {
             this.ativa = true;
@@ -223,14 +214,6 @@ public class Vaga {
 
     public void setModalidade(ModalidadeVaga modalidade) {
         this.modalidade = modalidade;
-    }
-
-    public NivelExperiencia getNivelExperiencia() {
-        return nivelExperiencia;
-    }
-
-    public void setNivelExperiencia(NivelExperiencia nivelExperiencia) {
-        this.nivelExperiencia = nivelExperiencia;
     }
 
     public Boolean getAtiva() {

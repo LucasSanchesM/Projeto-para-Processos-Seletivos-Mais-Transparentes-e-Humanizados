@@ -1,4 +1,4 @@
-package com.unisal.selectaapi.vagas;
+package com.unisal.selectaapi.vagas.repository;
 
 import java.util.List;
 import java.util.UUID;

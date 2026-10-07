@@ -17,7 +17,7 @@ import com.unisal.selectaapi.company.repository.CompanyProfileRepository;
 
 import com.unisal.selectaapi.exception.BusinessException;
 import com.unisal.selectaapi.geo.GeoCodingService;
-import com.unisal.selectaapi.vagas.VagaRepository;
+import com.unisal.selectaapi.vagas.repository.VagaRepository;
 import com.unisal.selectaapi.vagas.VagaRole;
 import com.unisal.selectaapi.vagas.VagaSpecification;
 import com.unisal.selectaapi.vagas.dto.CreateVagaDto;
@@ -65,7 +65,6 @@ public class VagaService {
         vaga.setLatitude(dto.latitude());
         vaga.setCategoria(dto.categoria());
         vaga.setModalidade(dto.modalidade());
-        vaga.setMetaTags(normalizeTags(dto.metaTags()));
         vaga.setAtiva(true);
 
         configurarEtapas(vaga, dto.etapas());
@@ -239,7 +238,6 @@ public class VagaService {
                 vaga.getLongitude(),
                 vaga.getCategoria(),
                 vaga.getModalidade(),
-                vaga.getMetaTags(),
                 etapasResponse,
                 vaga.getAtiva(),
                 vaga.getCreatedAt(),

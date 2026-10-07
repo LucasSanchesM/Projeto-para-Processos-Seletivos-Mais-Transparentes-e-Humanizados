@@ -33,7 +33,6 @@ public record VagaResponse(
     // Perfil da vaga
     VagaRole categoria,
     ModalidadeVaga modalidade,
-    List<String> metaTags,
     List<EtapaVagaResponse> etapas,
 
     Boolean ativa,

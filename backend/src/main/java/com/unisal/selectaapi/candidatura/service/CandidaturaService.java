@@ -31,7 +31,7 @@ import com.unisal.selectaapi.exception.BusinessException;
 import com.unisal.selectaapi.mensageria.dto.CandidaturaEmailRequest;
 import com.unisal.selectaapi.user.UserRepository;
 import com.unisal.selectaapi.user.entity.User;
-import com.unisal.selectaapi.vagas.VagaRepository;
+import com.unisal.selectaapi.vagas.repository.VagaRepository;
 
 @Service
 public class CandidaturaService {

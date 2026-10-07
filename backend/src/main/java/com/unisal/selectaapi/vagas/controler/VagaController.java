@@ -1,10 +1,11 @@
-package com.unisal.selectaapi.vagas;
+package com.unisal.selectaapi.vagas.controler;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 
+import com.unisal.selectaapi.vagas.VagaRole;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,14 +17,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 
 import com.unisal.selectaapi.vagas.dto.UpdateVaga;
 import com.unisal.selectaapi.vagas.dto.VagaResponse;
-import com.unisal.selectaapi.vagas.dto.SearchMetadataRequest;
-import com.unisal.selectaapi.vagas.entity.SearchMetadata;
-import com.unisal.selectaapi.vagas.repository.SearchMetadataRepository;
 import com.unisal.selectaapi.vagas.entity.ModalidadeVaga;
 import com.unisal.selectaapi.vagas.services.VagaService;
 import com.unisal.selectaapi.vagas.dto.CreateVagaDto;
@@ -37,11 +33,9 @@ public class VagaController {
 
 
     private final VagaService vagaService;
-    private final SearchMetadataRepository searchMetadataRepository;
 
-    public VagaController(VagaService vagaService, SearchMetadataRepository searchMetadataRepository) {
+    public VagaController(VagaService vagaService) {
         this.vagaService = vagaService;
-        this.searchMetadataRepository = searchMetadataRepository;
     }
 
     // CRIAR UMA VAGA
@@ -79,20 +73,6 @@ public class VagaController {
 
         return ResponseEntity.ok(vagas);
     }
-
-    @PostMapping("/search-metadata")
-    public ResponseEntity<Void> recordSearchMetadata(
-            @AuthenticationPrincipal Jwt jwt,
-            @Valid @RequestBody SearchMetadataRequest request) {
-        SearchMetadata metadata = new SearchMetadata();
-        metadata.setUserId(jwt == null ? null : UUID.fromString(jwt.getSubject()));
-        metadata.setQuery(request.query());
-        metadata.setSearchTag(request.searchTag().trim().toLowerCase());
-        metadata.setMetadataJson(request.metadataJson());
-        searchMetadataRepository.save(metadata);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
-    }
-
     // LISTAR VAGAS DE UMA EMPRESA ESPECÍFICA
     @GetMapping("/empresa/{companyProfileId}")
     public ResponseEntity<List<VagaResponse>> findVagasByCompany(

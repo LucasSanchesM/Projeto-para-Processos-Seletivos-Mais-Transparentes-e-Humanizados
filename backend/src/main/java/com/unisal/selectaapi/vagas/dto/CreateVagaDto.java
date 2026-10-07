@@ -8,7 +8,6 @@ import java.util.UUID;
 import com.unisal.selectaapi.candidatura.entity.EtapaProcesso;
 import com.unisal.selectaapi.vagas.VagaRole;
 import com.unisal.selectaapi.vagas.entity.ModalidadeVaga;
-import com.unisal.selectaapi.vagas.entity.NivelExperiencia;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -38,9 +37,6 @@ public record CreateVagaDto(
 
     @NotNull(message = "O campo 'modalidade' é obrigatório")
     ModalidadeVaga modalidade,
-
-    @Size(max = 20, message = "A vaga pode ter no máximo 20 meta tags")
-    List<String> metaTags,
 
     @NotNull(message = "O campo 'latitude' é obrigatorio")
     Double latitude,

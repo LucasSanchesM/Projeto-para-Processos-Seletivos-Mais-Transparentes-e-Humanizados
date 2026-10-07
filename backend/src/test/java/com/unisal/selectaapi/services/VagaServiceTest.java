@@ -6,7 +6,7 @@ import com.unisal.selectaapi.company.repository.CompanyProfileRepository;
 import com.unisal.selectaapi.exception.BusinessException;
 import com.unisal.selectaapi.geo.EnderecoDto;
 import com.unisal.selectaapi.geo.GeoCodingService;
-import com.unisal.selectaapi.vagas.VagaRepository;
+import com.unisal.selectaapi.vagas.repository.VagaRepository;
 import com.unisal.selectaapi.vagas.VagaRole;
 import com.unisal.selectaapi.vagas.dto.CreateVagaDto;
 import com.unisal.selectaapi.vagas.entity.ModalidadeVaga;
@@ -87,7 +87,6 @@ public class VagaServiceTest {
                     id,
                     VagaRole.DESENVOLVIMENTO_SOFTWARE,
                     ModalidadeVaga.PRESENCIAL,
-                    List.of("teste"),
                     -23.5505,
                     -46.6333,
                     List.of(EtapaProcesso.ENTREVISTA_TECNICA, EtapaProcesso.ENTREVISTA_RH)
@@ -133,7 +132,6 @@ public class VagaServiceTest {
             assertEquals(input.companyProfileId(), vagaCaptured.getEmpresa().getId());
             assertEquals(input.categoria(), vagaCaptured.getCategoria());
             assertEquals(input.modalidade(), vagaCaptured.getModalidade());
-            assertEquals(input.metaTags(), vagaCaptured.getMetaTags());
             assertEquals(input.latitude(), vagaCaptured.getLatitude());
             assertEquals(input.longitude(), vagaCaptured.getLongitude());
             assertEquals(input.etapas().size(), vagaCaptured.getEtapas().size());
@@ -156,7 +154,6 @@ public class VagaServiceTest {
             assertEquals(input.companyProfileId(), response.companyProfileId());
             assertEquals(input.categoria(), response.categoria());
             assertEquals(input.modalidade(), response.modalidade());
-            assertEquals(input.metaTags(), response.metaTags());
             assertEquals(input.latitude(), response.latitude());
             assertEquals(input.longitude(), response.longitude());
 
@@ -196,7 +193,6 @@ public class VagaServiceTest {
                     dto.companyProfileId(),
                     VagaRole.DESENVOLVIMENTO_SOFTWARE,
                     ModalidadeVaga.PRESENCIAL,
-                    List.of("string"),
                     -23.5505,
                     -46.6333,
                      List.of(EtapaProcesso.INSCRICAO, EtapaProcesso.ENTREVISTA_RH, EtapaProcesso.CONTRATACAO)
@@ -236,7 +232,6 @@ public class VagaServiceTest {
                     dto.companyProfileId(),
                     VagaRole.DESENVOLVIMENTO_SOFTWARE,
                     ModalidadeVaga.PRESENCIAL,
-                    List.of("teste"),
                     -23.5505,
                     -46.6333,
                     Collections.emptyList()
@@ -275,7 +270,6 @@ public class VagaServiceTest {
             assertEquals(input.companyProfileId(), vagaCaptured.getEmpresa().getId());
             assertEquals(input.categoria(), vagaCaptured.getCategoria());
             assertEquals(input.modalidade(), vagaCaptured.getModalidade());
-            assertEquals(input.metaTags(), vagaCaptured.getMetaTags());
             assertEquals(input.latitude(), vagaCaptured.getLatitude());
             assertEquals(input.longitude(), vagaCaptured.getLongitude());
 
@@ -302,7 +296,6 @@ public class VagaServiceTest {
             assertEquals(input.companyProfileId(), response.companyProfileId());
             assertEquals(input.categoria(), response.categoria());
             assertEquals(input.modalidade(), response.modalidade());
-            assertEquals(input.metaTags(), response.metaTags());
             assertEquals(input.latitude(), response.latitude());
             assertEquals(input.longitude(), response.longitude());
 
