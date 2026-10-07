@@ -5,6 +5,7 @@ import com.unisal.selectaapi.candidatura.repository.CandidaturaRepository;
 import com.unisal.selectaapi.chat.dtos.CandidaturaEUsarioDto;
 import com.unisal.selectaapi.chat.dtos.CreateMessageDto;
 import com.unisal.selectaapi.chat.dtos.HistoricoMessageResponseDto;
+import com.unisal.selectaapi.chat.dtos.MensagemLidaDto;
 import com.unisal.selectaapi.chat.entity.HistoricoMensagens;
 import com.unisal.selectaapi.chat.repository.HistoricoMensagensRepository;
 import com.unisal.selectaapi.exception.BusinessException;
@@ -15,6 +16,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -68,7 +70,7 @@ public class HistoricoMensagensService {
                                                         registro.getUser().getName(),
                                                         //Embaixo eu retorno true se o usuario do registro bater com o que fez o pedido
                                                         registro.getMensagem(), registro.getUser().getId().equals(userId),
-                                                        registro.getCreatedTimeStamp()
+                                                        registro.getCreatedTimeStamp(), registro.getLida()
                                                 )).toList();
     }
 
@@ -79,15 +81,32 @@ public class HistoricoMensagensService {
         registro.setCandidatura(dadosMensagem.candidatura());
         registro.setMensagem(dto.message());
         registro.setUser(dadosMensagem.user());
+        registro.setLida(false);
         var registroSaved = historicoMensagensRepository.save(registro);
         simpMessagingTemplate.convertAndSendToUser(UserRole.CANDIDATE.name().equals(dadosMensagem.user().getRole()) ?
                                                             dadosMensagem.candidatura().getVaga().getEmpresa().getUser().getId().toString():
                                                             dadosMensagem.candidatura().getCandidato().getUser().getId().toString(),
                                                     "/queue/mensagens",
-                                                    new HistoricoMessageResponseDto(registroSaved.getUser().getName(), registroSaved.getMensagem(), false, registroSaved.getCreatedTimeStamp())
+                                                    new HistoricoMessageResponseDto(registroSaved.getUser().getName(), registroSaved.getMensagem(), false, registroSaved.getCreatedTimeStamp(), registroSaved.getLida())
         );
 
-        return new HistoricoMessageResponseDto(registroSaved.getUser().getName(), registroSaved.getMensagem(), true, registroSaved.getCreatedTimeStamp());
+        return new HistoricoMessageResponseDto(registroSaved.getUser().getName(), registroSaved.getMensagem(), true, registroSaved.getCreatedTimeStamp(), registroSaved.getLida());
+    }
+
+    @Transactional
+    public void marcarMensagensComoLidas(UUID userId, UUID candidaturaId, LocalDateTime lidaEm){
+            var dados = pegarEValidarCandidaturaEUser(userId, candidaturaId);
+            var  atualizadas = historicoMensagensRepository.marcarComoLidas(candidaturaId, userId, lidaEm);
+            if(atualizadas>0){
+                simpMessagingTemplate.convertAndSendToUser(UserRole.CANDIDATE.name().equals(dados.user().getRole()) ?
+                                dados.candidatura().getVaga().getEmpresa().getUser().getId().toString():
+                                dados.candidatura().getCandidato().getUser().getId().toString(),
+                        "/queue/leituras",
+                        new MensagemLidaDto(candidaturaId, lidaEm)
+                );
+            }
+
+
     }
 
 }

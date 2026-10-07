@@ -27,6 +27,12 @@ public class HistoricoMensagens {
     @Column(name = "mensagem", nullable = false, length = 300)
     private String mensagem;
 
+    @Column(name = "lida", nullable = false)
+    private Boolean lida;
+
+    @Column(name = "lida_em")
+    private LocalDateTime lidaEm;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdTimeStamp;
 
@@ -69,16 +75,34 @@ public class HistoricoMensagens {
         return mensagem;
     }
 
+    public LocalDateTime getLida_Em() {
+        return lidaEm;
+    }
+
+    public void setLida_Em(LocalDateTime lida_Em) {
+        this.lidaEm = lida_Em;
+    }
+
     public void setMensagem(String mensagem) {
         this.mensagem = mensagem;
+    }
+
+    public Boolean getLida() {
+        return lida;
+    }
+
+    public void setLida(Boolean lida) {
+        this.lida = lida;
     }
 
     public HistoricoMensagens() {
     }
 
     @PrePersist
-    private void OnCreate(){
+    private void onCreate(){
         this.createdTimeStamp = LocalDateTime.now();
+        this.lida = false;
+        this.lidaEm = null;
     }
 
 
