@@ -77,6 +77,11 @@ public class HistoricoMensagensService {
     @Transactional
     public HistoricoMessageResponseDto registrarMensagem(CreateMessageDto dto, UUID userId, UUID candidaturaId){
         var dadosMensagem = pegarEValidarCandidaturaEUser(userId, candidaturaId);
+        if(dadosMensagem.candidatura().getChatIniciadoEm() == null && UserRole.CANDIDATE.name().equals(dadosMensagem.user().getRole())){
+            throw new BusinessException(HttpStatus.FORBIDDEN, "Apenas empresas podem iniciar um chat");
+        }else if(dadosMensagem.candidatura().getChatIniciadoEm() == null && UserRole.COMPANY.name().equals(dadosMensagem.user().getRole())){
+            dadosMensagem.candidatura().setChatIniciadoEm(LocalDateTime.now());
+        }
         var registro = new HistoricoMensagens();
         registro.setCandidatura(dadosMensagem.candidatura());
         registro.setMensagem(dto.message());
@@ -105,8 +110,8 @@ public class HistoricoMensagensService {
                         new MensagemLidaDto(candidaturaId, lidaEm)
                 );
             }
-
-
     }
+
+
 
 }
