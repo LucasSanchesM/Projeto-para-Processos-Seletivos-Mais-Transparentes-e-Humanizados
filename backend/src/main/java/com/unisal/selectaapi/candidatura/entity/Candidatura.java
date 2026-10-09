@@ -73,6 +73,9 @@ public class Candidatura {
     @OrderBy("createdAt ASC")
     private List<CandidaturaFeedback> feedbacks = new ArrayList<>();
 
+    @Column(name = "chat_iniciado_em")
+    private LocalDateTime chatIniciadoEm;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -102,6 +105,14 @@ public class Candidatura {
         if (this.status == null) {
             this.status = StatusCandidatura.EM_ANDAMENTO;
         }
+    }
+
+    public LocalDateTime getChatIniciadoEm() {
+        return chatIniciadoEm;
+    }
+
+    public void setChatIniciadoEm(LocalDateTime chatIniciadoEm) {
+        this.chatIniciadoEm = chatIniciadoEm;
     }
 
     @PreUpdate
