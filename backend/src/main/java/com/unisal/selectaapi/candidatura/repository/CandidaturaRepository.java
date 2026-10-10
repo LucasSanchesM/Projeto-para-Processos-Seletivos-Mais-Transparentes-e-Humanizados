@@ -21,6 +21,8 @@ public interface CandidaturaRepository
 
     Optional<Candidatura> findByIdAndVagaEmpresaUserId(UUID id, UUID userId);
 
+    Optional<Candidatura> findByIdAndVagaEmpresaId(UUID id, UUID empresaId);
+
     List<Candidatura> findByCandidatoUserIdOrderByCreatedAtDesc(UUID userId);
 
     List<Candidatura> findByVagaIdOrderByCreatedAtDesc(UUID vagaId);

@@ -27,6 +27,7 @@ import com.unisal.selectaapi.candidatura.repository.CandidaturaFeedbackRepositor
 import com.unisal.selectaapi.candidatura.repository.CandidaturaHistoricoRepository;
 import com.unisal.selectaapi.candidatura.repository.CandidaturaAgendamentoRepository;
 import com.unisal.selectaapi.candidatura.repository.CandidaturaRepository;
+import com.unisal.selectaapi.company.service.CompanyAccessService;
 import com.unisal.selectaapi.exception.BusinessException;
 import com.unisal.selectaapi.mensageria.dto.CandidaturaEmailRequest;
 import com.unisal.selectaapi.user.UserRepository;
@@ -45,6 +46,7 @@ public class CandidaturaService {
     private final UserRepository userRepository;
     private final CandidaturaMapper mapper;
     private final RabbitTemplate rabbitTemplate;
+    private final CompanyAccessService companyAccessService;
 
     public CandidaturaService(CandidaturaRepository candidaturaRepository,
             CandidaturaHistoricoRepository historicoRepository,
@@ -54,7 +56,9 @@ public class CandidaturaService {
             VagaRepository vagaRepository,
             UserRepository userRepository,
             CandidaturaMapper mapper,
-            RabbitTemplate rabbitTemplate) {
+            RabbitTemplate rabbitTemplate,
+            CompanyAccessService companyAccessService) {
+        this.companyAccessService = companyAccessService;
         this.candidaturaRepository = candidaturaRepository;
         this.historicoRepository = historicoRepository;
         this.feedbackRepository = feedbackRepository;
@@ -156,7 +160,8 @@ public class CandidaturaService {
             EtapaProcesso etapa,
             String candidatoNome) {
 
-        var spec = CandidaturaSpecification.withFilters(empresaUserId, vagaId, status, etapa, candidatoNome);
+        UUID empresaId = companyAccessService.resolveCompany(empresaUserId).getId();
+        var spec = CandidaturaSpecification.withFilters(empresaId, vagaId, status, etapa, candidatoNome);
 
         return candidaturaRepository.findAll(spec)
                 .stream()
@@ -268,8 +273,10 @@ public class CandidaturaService {
                         "Candidatura não encontrada para este candidato"));
     }
 
+    /** {@code empresaUserId} é o usuário logado: proprietário ou membro da equipe. */
     public Candidatura buscarComoEmpresa(UUID empresaUserId, UUID candidaturaId) {
-        return candidaturaRepository.findByIdAndVagaEmpresaUserId(candidaturaId, empresaUserId)
+        UUID empresaId = companyAccessService.resolveCompany(empresaUserId).getId();
+        return candidaturaRepository.findByIdAndVagaEmpresaId(candidaturaId, empresaId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
                         "Candidatura não encontrada para as vagas desta empresa"));
     }

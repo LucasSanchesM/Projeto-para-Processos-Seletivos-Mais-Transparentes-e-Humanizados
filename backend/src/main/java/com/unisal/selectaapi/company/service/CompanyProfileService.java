@@ -24,13 +24,16 @@ public class CompanyProfileService {
     private final CompanyProfileRepository companyProfileRepository;
     private final FileStorage fileStorage;
     private final ImageUploadValidator imageValidator;
+    private final CompanyAccessService companyAccessService;
 
     public CompanyProfileService(CompanyProfileRepository companyProfileRepository,
             FileStorage fileStorage,
-            ImageUploadValidator imageValidator) {
+            ImageUploadValidator imageValidator,
+            CompanyAccessService companyAccessService) {
         this.companyProfileRepository = companyProfileRepository;
         this.fileStorage = fileStorage;
         this.imageValidator = imageValidator;
+        this.companyAccessService = companyAccessService;
     }
 
     @Transactional(readOnly = true)
@@ -40,7 +43,7 @@ public class CompanyProfileService {
 
     @Transactional
     public CompanyProfileDto updateProfile(UUID userId, UpdateCompanyProfileDto dto) {
-        var profile = getByUserId(userId);
+        var profile = getManagedByUserId(userId);
 
         if (dto.companyName() != null && !dto.companyName().isBlank())
             profile.setCompanyName(dto.companyName());
@@ -56,7 +59,7 @@ public class CompanyProfileService {
 
     @Transactional
     public CompanyProfileDto uploadLogo(UUID userId, MultipartFile file) {
-        var profile = getByUserId(userId);
+        var profile = getManagedByUserId(userId);
         var image = imageValidator.validate(file);
 
         String oldKey = profile.getLogoKey();
@@ -76,7 +79,7 @@ public class CompanyProfileService {
 
     @Transactional
     public CompanyProfileDto deleteLogo(UUID userId) {
-        var profile = getByUserId(userId);
+        var profile = getManagedByUserId(userId);
         String oldKey = profile.getLogoKey();
 
         profile.setLogoUrl(null);
@@ -87,10 +90,14 @@ public class CompanyProfileService {
         return toDto(saved);
     }
 
+    /** Proprietário e qualquer membro podem ver o perfil da empresa. */
     private CompanyProfile getByUserId(UUID userId) {
-        return companyProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,
-                        "Não existe um perfil associado a este id"));
+        return companyAccessService.resolveCompany(userId);
+    }
+
+    /** Só proprietário e ADMIN alteram o perfil (dados, logo). */
+    private CompanyProfile getManagedByUserId(UUID userId) {
+        return companyAccessService.requireManager(userId).company();
     }
 
     private CompanyProfileDto toDto(CompanyProfile profile) {
