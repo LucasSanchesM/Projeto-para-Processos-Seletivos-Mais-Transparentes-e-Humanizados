@@ -45,9 +45,16 @@ public class NotificacaoService {
         notificacao.setDescricao(dto.descricao());
         notificacao.setType(dto.type());
         notificacao.setUser(user);
+        notificacao.setRecursoId(dto.recursoId());
 
         var saved = notificacaoRepository.save(notificacao);
-        var response = new NotificacaoResponseDto(saved.getIdNotificacao(), saved.getUser().getId(), saved.getTitulo(), saved.getDescricao(), saved.getCreatedAt(), saved.getType());
+        var response = new NotificacaoResponseDto(saved.getIdNotificacao(),
+                                                    saved.getUser().getId(),
+                                                    saved.getTitulo(),
+                                                    saved.getDescricao(),
+                                                    saved.getCreatedAt(),
+                                                    saved.getType(),
+                                                    saved.getRecursoId());
 
 
         eventPublisher.publishEvent(new CriarNotificacaoEvent(response, userId));
@@ -79,7 +86,8 @@ public class NotificacaoService {
                                                     notificacao.getTitulo(),
                                                     notificacao.getDescricao(),
                                                     notificacao.getCreatedAt(),
-                                                    notificacao.getType())).toList();
+                                                    notificacao.getType(),
+                                                    notificacao.getRecursoId())).toList();
     }
 
     @Transactional(readOnly = true)

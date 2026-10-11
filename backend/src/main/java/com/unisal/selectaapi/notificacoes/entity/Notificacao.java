@@ -6,7 +6,6 @@
     import jakarta.persistence.*;
 
     import java.time.LocalDateTime;
-    import java.util.Set;
     import java.util.UUID;
 
     @Entity
@@ -31,6 +30,9 @@
         @Column(name = "type", nullable = false)
         private NotificacoesRole type;
 
+        @Column(name = "recurso_id", nullable = false, length = 64)
+        private String recursoId;
+
         @Column(nullable = false)
         private boolean lida = false;
 
@@ -43,11 +45,20 @@
         public Notificacao() {
         }
 
-        public Notificacao(User user, NotificacoesRole type, String titulo, String descricao) {
+        public Notificacao(User user, NotificacoesRole type, String titulo, String descricao, String recursoId) {
             this.user = user;
             this.descricao = descricao;
             this.titulo = titulo;
             this.type = type;
+            this.recursoId = recursoId;
+        }
+
+        public String getRecursoId() {
+            return recursoId;
+        }
+
+        public void setRecursoId(String recursoId) {
+            this.recursoId = recursoId;
         }
 
         public LocalDateTime getCreatedAt() {

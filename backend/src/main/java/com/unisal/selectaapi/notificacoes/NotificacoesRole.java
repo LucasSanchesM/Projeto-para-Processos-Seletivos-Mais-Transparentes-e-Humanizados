@@ -1,8 +1,8 @@
 package com.unisal.selectaapi.notificacoes;
 
 public enum NotificacoesRole {
-    CANDIDATURA,
+    AGENDAMENTO,
+    CANDIDATURA_ATUALIZACAO,
     CHAT,
     VAGAS;
-
 }
