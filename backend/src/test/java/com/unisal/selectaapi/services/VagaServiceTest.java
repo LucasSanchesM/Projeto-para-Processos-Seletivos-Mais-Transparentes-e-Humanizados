@@ -23,9 +23,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
@@ -315,7 +313,7 @@ public class VagaServiceTest {
         private Vaga vaga;
 
         @BeforeEach
-        private void setUp(){
+        void setUp(){
             empresa = new CompanyProfile();
             empresa.setId(UUID.randomUUID());
             empresa.setCompanyName("Empresa X");
@@ -333,8 +331,8 @@ public class VagaServiceTest {
             vaga.setEstado("SP");
             vaga.setLatitude(-23.5505);
             vaga.setLongitude(-46.6333);
-            vaga.setCategoria(VagaRole.values()[0]);          // ajuste para um valor real
-            vaga.setModalidade(ModalidadeVaga.values()[0]);   // ajuste para um valor real
+            vaga.setCategoria(VagaRole.DESENVOLVIMENTO_SOFTWARE);
+            vaga.setModalidade(ModalidadeVaga.PRESENCIAL);
             vaga.setAtiva(true);
             vaga.setCreatedAt(LocalDateTime.now());
             vaga.setUpdatedAt(LocalDateTime.now());
@@ -356,10 +354,140 @@ public class VagaServiceTest {
                                                         null, null,
                                                         0, 1);
             //===== ASSERT =======
-            verify(vagaRepository, times(1)).findAll(any(Specification.class), any(PageRequest.class));
+            verify(vagaRepository, times(1)).findAll(any(Specification.class), any(Pageable.class));
             assertEquals(vaga.getId(), response.get(0).id());
         }
     }
 
+    @Nested
+    class FindAllByCompany{
 
+        private UUID id;
+        private CompanyProfile empresa;
+        private Vaga vaga1;
+        private Vaga vaga2;
+
+        @BeforeEach
+        void setUp(){
+            id = UUID.randomUUID();
+            empresa = new CompanyProfile();
+            empresa.setId(id);
+            empresa.setCompanyName("Empresa Teste LTDA");
+            empresa.setCnpj("12345678000199");
+            empresa.setDescription("Descrição da empresa teste");
+            empresa.setIndustry("Tecnologia");
+            empresa.setWebsite("https://empresateste.com");
+            empresa.setCity("São Paulo");
+            empresa.setState("SP");
+            empresa.setLogoUrl("https://empresateste.com/logo.png");
+            empresa.setLatitude(-23.5505);
+            empresa.setLongitude(-46.6333);
+
+            vaga1 = new Vaga();
+            vaga1.setId(UUID.randomUUID());
+            vaga1.setTitulo("Desenvolvedor Java");
+            vaga1.setSalario(new BigDecimal("8000.00"));
+            vaga1.setDescricao("Desenvolvimento de APIs REST com Spring Boot");
+            vaga1.setBeneficios("VR, VA, plano de saúde");
+            vaga1.setEmpresa(empresa);
+            vaga1.setCidade("São Paulo");
+            vaga1.setEstado("SP");
+            vaga1.setLatitude(-23.5505);
+            vaga1.setLongitude(-46.6333);
+            vaga1.setCategoria(VagaRole.DESENVOLVIMENTO_SOFTWARE);
+            vaga1.setModalidade(ModalidadeVaga.PRESENCIAL);
+            vaga1.setAtiva(true);
+            vaga1.setCreatedAt(LocalDateTime.now());
+            vaga1.setUpdatedAt(LocalDateTime.now());
+
+            vaga2 = new Vaga();
+            vaga2.setId(UUID.randomUUID());
+            vaga2.setTitulo("Analista de Dados Pleno");
+            vaga2.setSalario(new BigDecimal("9500.00"));
+            vaga2.setDescricao("Vaga para analista de dados com experiência em SQL, Python e Power BI");
+            vaga2.setBeneficios("Vale refeição, Gympass, participação nos lucros, auxílio home office");
+            vaga2.setEmpresa(empresa);
+            vaga2.setCidade("Rio de Janeiro");
+            vaga2.setEstado("RJ");
+            vaga2.setLatitude(-22.9068);
+            vaga2.setLongitude(-43.1729);
+            vaga2.setCategoria(VagaRole.INFRAESTRUTURA_DEVOPS);
+            vaga2.setModalidade(ModalidadeVaga.REMOTO);
+            vaga2.setAtiva(true);
+            vaga2.setCreatedAt(LocalDateTime.now());
+            vaga2.setUpdatedAt(LocalDateTime.now());
+        }
+
+        @Test
+        @DisplayName("Should return all vaga's company with success")
+        void shouldReturnAllVagasCompanyWithSucess(){
+            //===== ARRANGE =======
+            var input = id;
+
+            doReturn(Optional.of(empresa)).when(companyProfileRepository).findById(input);
+            doReturn(List.of(vaga1, vaga2)).when(vagaRepository).findByEmpresaId(input);
+
+            //===== ACT =======
+            var response = vagaService.findAllByCompany(input);
+
+            //===== ASSERT =======
+            verify(companyProfileRepository, times(1)).findById(uuidArgumentCaptor.capture());
+            verify(vagaRepository, times(1)).findByEmpresaId(uuidArgumentCaptor.capture());
+            var listOfids = uuidArgumentCaptor.getAllValues();
+            assertEquals(empresa.getId(), listOfids.get(0));
+            assertEquals(vaga1.getEmpresa().getId(), listOfids.get(1));
+            assertEquals(2, response.size());
+
+            //----- Vaga 1 -----
+            assertEquals(vaga1.getId(), response.get(0).id());
+            assertEquals(vaga1.getTitulo(), response.get(0).titulo());
+            assertEquals(vaga1.getSalario(), response.get(0).salario());
+            assertEquals(vaga1.getDescricao(), response.get(0).descricao());
+            assertEquals(vaga1.getBeneficios(), response.get(0).beneficios());
+            assertEquals(vaga1.getCidade(), response.get(0).cidade());
+            assertEquals(vaga1.getEstado(), response.get(0).estado());
+            assertEquals(vaga1.getLatitude(), response.get(0).latitude());
+            assertEquals(vaga1.getLongitude(), response.get(0).longitude());
+            assertEquals(vaga1.getCategoria(), response.get(0).categoria());
+            assertEquals(vaga1.getModalidade(), response.get(0).modalidade());
+            assertEquals(vaga1.getAtiva(), response.get(0).ativa());
+
+            //----- Vaga 2 -----
+            assertEquals(vaga2.getId(), response.get(1).id());
+            assertEquals(vaga2.getTitulo(), response.get(1).titulo());
+            assertEquals(vaga2.getSalario(), response.get(1).salario());
+            assertEquals(vaga2.getDescricao(), response.get(1).descricao());
+            assertEquals(vaga2.getBeneficios(), response.get(1).beneficios());
+            assertEquals(vaga2.getCidade(), response.get(1).cidade());
+            assertEquals(vaga2.getEstado(), response.get(1).estado());
+            assertEquals(vaga2.getLatitude(), response.get(1).latitude());
+            assertEquals(vaga2.getLongitude(), response.get(1).longitude());
+            assertEquals(vaga2.getCategoria(), response.get(1).categoria());
+            assertEquals(vaga2.getModalidade(), response.get(1).modalidade());
+            assertEquals(vaga2.getAtiva(), response.get(1).ativa());
+
+            //Verica se é a mesma empresa nas vagas
+            assertEquals(empresa.getId(), response.get(0).companyProfileId());
+            assertEquals(empresa.getId(), response.get(1).companyProfileId());
+        }
+
+        @Test
+        @DisplayName("Should not return any vaga when company don't exist")
+        void shouldNotReturnAnyVagaWhenCompanyDontExist(){
+            //===== ARRANGE =======
+            var input = id;
+
+            doReturn(Optional.empty()).when(companyProfileRepository).findById(input);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, () -> vagaService.findAllByCompany(input));
+
+            //===== ASSERT =======
+            verify(companyProfileRepository, times(1)).findById(uuidArgumentCaptor.capture());
+            verify(vagaRepository, never()).findByEmpresaId(any(UUID.class));
+            assertEquals(input, uuidArgumentCaptor.getValue());
+            assertEquals("Empresa não encontrada com o id: " + input, response.getMessage());
+        }
+
+    }
 }
