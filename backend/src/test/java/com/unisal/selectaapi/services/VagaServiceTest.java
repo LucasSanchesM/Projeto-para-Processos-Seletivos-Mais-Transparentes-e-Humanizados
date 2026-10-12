@@ -22,8 +22,14 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -303,6 +309,57 @@ public class VagaServiceTest {
 
     }
 
+    @Nested
+    class FindAllWithFilters{
+        private CompanyProfile empresa;
+        private Vaga vaga;
+
+        @BeforeEach
+        private void setUp(){
+            empresa = new CompanyProfile();
+            empresa.setId(UUID.randomUUID());
+            empresa.setCompanyName("Empresa X");
+            empresa.setCnpj("12345678000199");
+            empresa.setLogoUrl("https://exemplo.com/logo.png");
+
+            vaga = new Vaga();
+            vaga.setId(UUID.randomUUID());
+            vaga.setTitulo("Desenvolvedor Java");
+            vaga.setSalario(new BigDecimal("8000.00"));
+            vaga.setDescricao("Desenvolvimento de APIs REST com Spring Boot");
+            vaga.setBeneficios("VR, VA, plano de saúde");
+            vaga.setEmpresa(empresa);
+            vaga.setCidade("São Paulo");
+            vaga.setEstado("SP");
+            vaga.setLatitude(-23.5505);
+            vaga.setLongitude(-46.6333);
+            vaga.setCategoria(VagaRole.values()[0]);          // ajuste para um valor real
+            vaga.setModalidade(ModalidadeVaga.values()[0]);   // ajuste para um valor real
+            vaga.setAtiva(true);
+            vaga.setCreatedAt(LocalDateTime.now());
+            vaga.setUpdatedAt(LocalDateTime.now());
+        }
+
+        //Aqui, como o metodo em si nao lança nenhuma excessão irei testar somente o funcionamento das chamadas de find dtc
+        @Test
+        @DisplayName("Should return a vaga with success")
+        void shouldReturnAVagaWithSuccess(){
+            //===== ARRANGE =======
+            var inputTitle = "Desenvolvedor Java";
+            when(vagaRepository.findAll(any(Specification.class), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(vaga)));
+            //===== ACT =======
+            var response = vagaService.findAllWithFilters(inputTitle,
+                                                    null, null,
+                                                    null, null,
+                                                        null, null,
+                                                        null, null,
+                                                        0, 1);
+            //===== ASSERT =======
+            verify(vagaRepository, times(1)).findAll(any(Specification.class), any(PageRequest.class));
+            assertEquals(vaga.getId(), response.get(0).id());
+        }
+    }
 
 
 }
