@@ -4,6 +4,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.unisal.selectaapi.notificacoes.NotificacoesRole;
+import com.unisal.selectaapi.notificacoes.dtos.PublishNotificacaoDto;
+import com.unisal.selectaapi.notificacoes.service.NotificacaoService;
 import com.unisal.selectaapi.vagas.entity.Vaga;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
@@ -45,16 +48,17 @@ public class CandidaturaService {
     private final UserRepository userRepository;
     private final CandidaturaMapper mapper;
     private final RabbitTemplate rabbitTemplate;
+    private final NotificacaoService notificacaoService;
 
     public CandidaturaService(CandidaturaRepository candidaturaRepository,
-            CandidaturaHistoricoRepository historicoRepository,
-            CandidaturaFeedbackRepository feedbackRepository,
-            CandidaturaAgendamentoRepository agendamentoRepository,
-            CandidateProfileRepository candidateProfileRepository,
-            VagaRepository vagaRepository,
-            UserRepository userRepository,
-            CandidaturaMapper mapper,
-            RabbitTemplate rabbitTemplate) {
+                              CandidaturaHistoricoRepository historicoRepository,
+                              CandidaturaFeedbackRepository feedbackRepository,
+                              CandidaturaAgendamentoRepository agendamentoRepository,
+                              CandidateProfileRepository candidateProfileRepository,
+                              VagaRepository vagaRepository,
+                              UserRepository userRepository,
+                              CandidaturaMapper mapper,
+                              RabbitTemplate rabbitTemplate, NotificacaoService notificacaoService) {
         this.candidaturaRepository = candidaturaRepository;
         this.historicoRepository = historicoRepository;
         this.feedbackRepository = feedbackRepository;
@@ -64,6 +68,7 @@ public class CandidaturaService {
         this.userRepository = userRepository;
         this.mapper = mapper;
         this.rabbitTemplate = rabbitTemplate;
+        this.notificacaoService = notificacaoService;
     }
 
     @Transactional
@@ -295,6 +300,23 @@ public class CandidaturaService {
                 agendamento != null ? agendamento.getLink() : null);
 
         rabbitTemplate.convertAndSend("email.exchange", "candidatura.atualizacao.key", request);
+
+        boolean temAgendamento = agendamento != null;
+        if(temAgendamento) {
+            notificacaoService.publicarNotificacao(candidatura.getCandidato().getUser().getId(),
+                    new PublishNotificacaoDto("Agendamento de conversa",
+                            mensagem + " Vaga: " + candidatura.getVaga().getTitulo() + ".",
+                            NotificacoesRole.AGENDAMENTO,
+                            agendamento.getId().toString()));
+        }
+        else{
+            String descricao = (mensagem == null || mensagem.isBlank())
+                    ? "Sua candidatura agora está na etapa: " + candidatura.getEtapaAtual().getDescricao() + "."
+                    : mensagem;
+            notificacaoService.publicarNotificacao(candidatura.getCandidato().getUser().getId(),
+                    new PublishNotificacaoDto("Atualização na Candidatura",
+                            descricao , NotificacoesRole.CANDIDATURA_ATUALIZACAO, candidatura.getId().toString()));
+        }
     }
 
     private CandidaturaDetalheResponse montarDetalhe(Candidatura candidatura) {

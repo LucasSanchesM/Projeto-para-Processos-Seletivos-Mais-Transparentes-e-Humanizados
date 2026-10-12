@@ -26,4 +26,12 @@ public interface HistoricoMensagensRepository extends JpaRepository<HistoricoMen
     int marcarComoLidas(@Param("candidaturaId") UUID candidaturaId,
                         @Param("userId") UUID userId,
                         @Param("agora") LocalDateTime agora);
+
+    @Query("""
+        SELECT COUNT(*) FROM HistoricoMensagens m
+                WHERE m.lida = false
+                        AND m.user.id = :user_id
+                        AND m.candidatura.id = :candidatura_id
+        """)
+    Long quantidadeDeMensagensNaoLidasPeloIdDaCandidatura(@Param("candidatura_id") UUID candidaturaId, @Param("user_id") UUID userId);
 }

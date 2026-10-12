@@ -9,6 +9,9 @@ import com.unisal.selectaapi.chat.dtos.MensagemLidaDto;
 import com.unisal.selectaapi.chat.entity.HistoricoMensagens;
 import com.unisal.selectaapi.chat.repository.HistoricoMensagensRepository;
 import com.unisal.selectaapi.exception.BusinessException;
+import com.unisal.selectaapi.notificacoes.NotificacoesRole;
+import com.unisal.selectaapi.notificacoes.dtos.PublishNotificacaoDto;
+import com.unisal.selectaapi.notificacoes.service.NotificacaoService;
 import com.unisal.selectaapi.user.UserRepository;
 import com.unisal.selectaapi.user.UserRole;
 import org.springframework.http.HttpStatus;
@@ -28,12 +31,14 @@ public class HistoricoMensagensService {
     private final CandidaturaRepository candidaturaRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
+    private final NotificacaoService notificacaoService;
 
-    public HistoricoMensagensService(HistoricoMensagensRepository historicoMensagensRepository, CandidaturaRepository candidaturaRepository, UserRepository userRepository, SimpMessagingTemplate simpMessagingTemplate) {
+    public HistoricoMensagensService(HistoricoMensagensRepository historicoMensagensRepository, CandidaturaRepository candidaturaRepository, UserRepository userRepository, SimpMessagingTemplate simpMessagingTemplate, NotificacaoService notificacaoService) {
         this.historicoMensagensRepository = historicoMensagensRepository;
         this.candidaturaRepository = candidaturaRepository;
         this.userRepository = userRepository;
         this.simpMessagingTemplate = simpMessagingTemplate;
+        this.notificacaoService = notificacaoService;
     }
 
     private CandidaturaEUsarioDto pegarEValidarCandidaturaEUser(UUID userId, UUID candidaturaId){
@@ -88,12 +93,20 @@ public class HistoricoMensagensService {
         registro.setUser(dadosMensagem.user());
         registro.setLida(false);
         var registroSaved = historicoMensagensRepository.save(registro);
-        simpMessagingTemplate.convertAndSendToUser(UserRole.CANDIDATE.name().equals(dadosMensagem.user().getRole()) ?
-                                                            dadosMensagem.candidatura().getVaga().getEmpresa().getUser().getId().toString():
-                                                            dadosMensagem.candidatura().getCandidato().getUser().getId().toString(),
+        var destinatario = UserRole.CANDIDATE.name().equals(dadosMensagem.user().getRole()) ?
+                dadosMensagem.candidatura().getVaga().getEmpresa().getUser().getId():
+                dadosMensagem.candidatura().getCandidato().getUser().getId();
+        simpMessagingTemplate.convertAndSendToUser(destinatario.toString(),
                                                     "/queue/mensagens",
                                                     new HistoricoMessageResponseDto(registroSaved.getUser().getName(), registroSaved.getMensagem(), false, registroSaved.getCreatedTimeStamp(), registroSaved.getLida())
         );
+        if(historicoMensagensRepository.quantidadeDeMensagensNaoLidasPeloIdDaCandidatura(registroSaved.getCandidatura().getId(), registroSaved.getUser().getId()) <= 1){
+            notificacaoService.publicarNotificacao(destinatario, new PublishNotificacaoDto("Mensagens não lidas",
+                                                                                  "Há mensagens nao lidas",
+                                                                                            NotificacoesRole.CHAT,
+                                                                                            registro.getIdMensagem().toString()
+                    ));
+        }
 
         return new HistoricoMessageResponseDto(registroSaved.getUser().getName(), registroSaved.getMensagem(), true, registroSaved.getCreatedTimeStamp(), registroSaved.getLida());
     }
