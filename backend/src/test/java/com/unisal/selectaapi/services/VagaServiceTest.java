@@ -6,6 +6,7 @@ import com.unisal.selectaapi.company.repository.CompanyProfileRepository;
 import com.unisal.selectaapi.exception.BusinessException;
 import com.unisal.selectaapi.geo.EnderecoDto;
 import com.unisal.selectaapi.geo.GeoCodingService;
+import com.unisal.selectaapi.vagas.dto.UpdateVaga;
 import com.unisal.selectaapi.vagas.repository.VagaRepository;
 import com.unisal.selectaapi.vagas.VagaRole;
 import com.unisal.selectaapi.vagas.dto.CreateVagaDto;
@@ -561,4 +562,132 @@ public class VagaServiceTest {
 
     }
 
+    @Nested
+    class UpdateVagaTest{
+        private CompanyProfile empresa;
+        private Vaga vaga;
+        private UUID vagaId;
+        private UpdateVaga dto;
+
+        @BeforeEach
+        void setUp(){
+            empresa = new CompanyProfile();
+            empresa.setId(UUID.randomUUID());
+            empresa.setCompanyName("Empresa X");
+            empresa.setCnpj("12345678000199");
+            empresa.setLogoUrl("https://exemplo.com/logo.png");
+
+            vagaId = UUID.randomUUID();
+            vaga = new Vaga();
+            vaga.setId(vagaId);
+            vaga.setTitulo("Desenvolvedor Java");
+            vaga.setSalario(new BigDecimal("8000.00"));
+            vaga.setDescricao("Desenvolvimento de APIs REST com Spring Boot");
+            vaga.setBeneficios("VR, VA, plano de saúde");
+            vaga.setEmpresa(empresa);
+            vaga.setCidade("São Paulo");
+            vaga.setEstado("SP");
+            vaga.setLatitude(-23.5505);
+            vaga.setLongitude(-46.6333);
+            vaga.setCategoria(VagaRole.DESENVOLVIMENTO_SOFTWARE);
+            vaga.setModalidade(ModalidadeVaga.PRESENCIAL);
+            vaga.setAtiva(true);
+            vaga.setCreatedAt(LocalDateTime.now());
+            vaga.setUpdatedAt(LocalDateTime.now());
+
+            dto = new UpdateVaga(
+                    "Desenvolvedor Backend Java Sênior",
+                    new BigDecimal("12000.00"),
+                    "Vaga atualizada para desenvolvedor backend sênior com Spring Boot e microsserviços",
+                    "VR, VA, plano de saúde, plano odontológico, home office",
+                    -22.7306,
+                    -45.1243,
+                    VagaRole.DESENVOLVIMENTO_SOFTWARE,
+                    ModalidadeVaga.REMOTO,
+                    false);
+        }
+
+        @Test
+        @DisplayName("Should update a vaga with success")
+        void shouldUpdateAVagaWithSuccess(){
+            //===== ARRANGE =======
+            var inputId = vagaId;
+            var inputDto = dto;
+            doReturn(Optional.of(vaga)).when(vagaRepository).findById(inputId);
+            var endereco = new EnderecoDto("Lorena", "SP");
+            doReturn(endereco).when(geoCodingService).retornarEndereco(inputDto.latitude(), inputDto.longitude());
+            when(vagaRepository.save(any(Vaga.class))).thenAnswer(chamado ->{
+                return chamado.getArgument(0);
+            });
+
+            //===== ACT =======
+            var response = vagaService.updateVaga(inputId, inputDto);
+
+            //===== ASSERT =======
+            verify(vagaRepository, times(1)).findById(uuidArgumentCaptor.capture());
+            assertEquals(inputId, uuidArgumentCaptor.getValue());
+
+            verify(geoCodingService, times(1)).retornarEndereco(doubleArgumentCaptor.capture(), doubleArgumentCaptor.capture());
+            var listOfDoubles = doubleArgumentCaptor.getAllValues();//index 0 -> latitude && index 1 -> longitude
+            assertEquals(inputDto.latitude(), listOfDoubles.get(0));
+            assertEquals(inputDto.longitude(), listOfDoubles.get(1));
+
+            verify(vagaRepository, times(1)).save(vagaArgumentCaptor.capture());
+            var vagaCaptured = vagaArgumentCaptor.getValue();
+
+            //Verifica se vaga que seria salva bate com o conteudo do dto
+            assertEquals(inputId, vagaCaptured.getId());
+            assertEquals(inputDto.titulo(), vagaCaptured.getTitulo());
+            assertEquals(inputDto.salario(), vagaCaptured.getSalario());
+            assertEquals(inputDto.descricao(), vagaCaptured.getDescricao());
+            assertEquals(inputDto.beneficios(), vagaCaptured.getBeneficios());
+            assertEquals(inputDto.latitude(), vagaCaptured.getLatitude());
+            assertEquals(inputDto.longitude(), vagaCaptured.getLongitude());
+            assertEquals(inputDto.categoria(), vagaCaptured.getCategoria());
+            assertEquals(inputDto.modalidade(), vagaCaptured.getModalidade());
+            assertEquals(inputDto.ativa(), vagaCaptured.getAtiva());
+
+            //Verifica que vaga capturada teve campos cidade e estado atualizados corretamente
+            assertEquals("Lorena", vagaCaptured.getCidade());
+            assertEquals("SP", vagaCaptured.getEstado());
+
+            //Assegura que as infos inseridas no dto foram atualizados e retornados corretamente
+            assertEquals(vagaId, response.id());
+            assertEquals(inputDto.titulo(), response.titulo());
+            assertEquals(inputDto.salario(), response.salario());
+            assertEquals(inputDto.descricao(), response.descricao());
+            assertEquals(inputDto.beneficios(), response.beneficios());
+            assertEquals(inputDto.latitude(), response.latitude());
+            assertEquals(inputDto.longitude(), response.longitude());
+            assertEquals(inputDto.categoria(), response.categoria());
+            assertEquals(inputDto.modalidade(), response.modalidade());
+            assertEquals(inputDto.ativa(), response.ativa());
+            assertEquals("Lorena", response.cidade());
+            assertEquals("SP", response.estado());
+            assertEquals(empresa.getId(), response.companyProfileId());
+        }
+
+        @Test
+        @DisplayName("Should not update a vaga when vagaId dont exist")
+        void shouldNotUpdateAVagaWhenVagaIdDontExist(){
+            //===== ARRANGE =======
+            var inputId = vagaId;
+            var inputDto = dto;
+            doReturn(Optional.empty()).when(vagaRepository).findById(inputId);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()->vagaService.updateVaga(inputId, inputDto));
+
+            //===== ASSERT =======
+            verify(vagaRepository, times(1)).findById(uuidArgumentCaptor.capture());
+            assertEquals(inputId, uuidArgumentCaptor.getValue());
+
+            //Verifica que nenhuma chamada a mais foi feito apos o erro
+            verify(geoCodingService, never()).retornarEndereco(anyDouble(), anyDouble());
+            verify(vagaRepository, never()).save(any(Vaga.class));
+
+            assertEquals("Vaga não encontrada", response.getMessage());
+        }
+    }
 }
+
