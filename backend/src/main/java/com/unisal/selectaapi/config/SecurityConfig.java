@@ -1,9 +1,15 @@
 package com.unisal.selectaapi.config;
 
+import java.security.GeneralSecurityException;
+import java.security.KeyFactory;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.List;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.Cookie;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -40,10 +46,39 @@ import com.unisal.selectaapi.auth.oauth.OAuthSuccessHandler;
 public class SecurityConfig {
 
     @Value("${jwt.public.key}")
-    private RSAPublicKey publicKey;
+    private String publicKeyPem;
 
     @Value("${jwt.private.key}")
+    private String privateKeyPem;
+
+    private RSAPublicKey publicKey;
     private RSAPrivateKey privateKey;
+
+    // Aceita a chave em PEM com quebras de linha reais ou com "\n" literal
+    // (como vem de variaveis de ambiente em plataformas de deploy).
+    @PostConstruct
+    void carregarChaves() {
+        try {
+            var keyFactory = KeyFactory.getInstance("RSA");
+            this.publicKey = (RSAPublicKey) keyFactory.generatePublic(
+                    new X509EncodedKeySpec(decodificarPem(publicKeyPem, "PUBLIC KEY")));
+            this.privateKey = (RSAPrivateKey) keyFactory.generatePrivate(
+                    new PKCS8EncodedKeySpec(decodificarPem(privateKeyPem, "PRIVATE KEY")));
+        } catch (GeneralSecurityException | IllegalArgumentException e) {
+            throw new IllegalStateException(
+                    "Chaves JWT invalidas: confira JWT_PUBLIC_KEY e JWT_PRIVATE_KEY (PEM, PKCS#8 / X.509)", e);
+        }
+    }
+
+    private static byte[] decodificarPem(String pem, String tipo) {
+        String base64 = pem
+                .replace("\"", "")
+                .replace("\\n", "")
+                .replace("-----BEGIN " + tipo + "-----", "")
+                .replace("-----END " + tipo + "-----", "")
+                .replaceAll("\\s", "");
+        return Base64.getDecoder().decode(base64);
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(
