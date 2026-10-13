@@ -202,7 +202,6 @@ public class VagaService {
         return listaVagas.stream().map(vaga -> mapToResponse(vaga)).toList();
     }
 
-
     private VagaResponse mapToResponse(Vaga vaga) {
 
         CompanyProfile empresa = vaga.getEmpresa();
@@ -245,17 +244,7 @@ public class VagaService {
         );
     }
 
-    private List<String> normalizeTags(List<String> tags) {
-        if (tags == null) return List.of();
-        return tags.stream()
-                .filter(tag -> tag != null && !tag.isBlank())
-                .map(tag -> tag.trim().toLowerCase())
-                .distinct()
-                .limit(20)
-                .toList();
-    }
-
-            private void configurarEtapas(Vaga vaga, List<EtapaProcesso> etapasInformadas) {
+    private void configurarEtapas(Vaga vaga, List<EtapaProcesso> etapasInformadas) {
             List<EtapaProcesso> etapas = etapasInformadas == null || etapasInformadas.isEmpty()
                 ? EtapaProcesso.etapasConfiguraveisPadrao()
                 : etapasInformadas;

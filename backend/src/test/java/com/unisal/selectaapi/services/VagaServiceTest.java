@@ -689,5 +689,75 @@ public class VagaServiceTest {
             assertEquals("Vaga não encontrada", response.getMessage());
         }
     }
+
+    @Nested
+    class DeleteVaga{
+        private CompanyProfile empresa;
+        private Vaga vaga;
+        private UUID vagaId;
+        @BeforeEach
+        void setUp(){
+            empresa = new CompanyProfile();
+            empresa.setId(UUID.randomUUID());
+            empresa.setCompanyName("Empresa X");
+            empresa.setCnpj("12345678000199");
+            empresa.setLogoUrl("https://exemplo.com/logo.png");
+
+            vagaId = UUID.randomUUID();
+            vaga = new Vaga();
+            vaga.setId(vagaId);
+            vaga.setTitulo("Desenvolvedor Java");
+            vaga.setSalario(new BigDecimal("8000.00"));
+            vaga.setDescricao("Desenvolvimento de APIs REST com Spring Boot");
+            vaga.setBeneficios("VR, VA, plano de saúde");
+            vaga.setEmpresa(empresa);
+            vaga.setCidade("São Paulo");
+            vaga.setEstado("SP");
+            vaga.setLatitude(-23.5505);
+            vaga.setLongitude(-46.6333);
+            vaga.setCategoria(VagaRole.DESENVOLVIMENTO_SOFTWARE);
+            vaga.setModalidade(ModalidadeVaga.PRESENCIAL);
+            vaga.setAtiva(true);
+            vaga.setCreatedAt(LocalDateTime.now());
+            vaga.setUpdatedAt(LocalDateTime.now());
+        }
+
+        @Test
+        @DisplayName("Should delete a vaga with success")
+        void shouldDeleteAVagaWithSuccess(){
+            //===== ARRANGE =======
+            var input = vagaId;
+            doReturn(Optional.of(vaga)).when(vagaRepository).findById(input);
+
+            //===== ACT =======
+            vagaService.deleteVaga(input);
+
+            //===== ASSERT =======
+            verify(vagaRepository, times(1)).findById(uuidArgumentCaptor.capture());
+
+            verify(vagaRepository, times(1)).delete(vagaArgumentCaptor.capture());
+            var vagaCaptured= vagaArgumentCaptor.getValue();
+            assertEquals(input, uuidArgumentCaptor.getValue());
+            assertEquals(input, vagaCaptured.getId());
+
+        }
+
+        @Test
+        @DisplayName("Should not delete a vaga when vagaId dont exist")
+        void shouldNotDeleteAVagaWhenVagaIdDontExist(){
+            //===== ARRANGE =======
+            var input = vagaId;
+            doReturn(Optional.empty()).when(vagaRepository).findById(input);
+
+            //===== ACT =======
+            var response = assertThrows(BusinessException.class, ()->vagaService.deleteVaga(input));
+
+            //===== ASSERT =======
+            verify(vagaRepository, times(1)).findById(uuidArgumentCaptor.capture());
+            verify(vagaRepository, never()).delete(any(Vaga.class));
+            assertEquals("Vaga não encontrada", response.getMessage());
+
+        }
+    }
 }
 
