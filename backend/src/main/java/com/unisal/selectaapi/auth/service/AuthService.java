@@ -49,7 +49,7 @@ public class AuthService {
 
     public LoginResponseDto issueToken(User user) {
         var now = Instant.now();
-        var expiresIn = 900L;
+        var expiresIn = 9000L;
         var scope = user.getRole();
 
         var claims = JwtClaimsSet.builder()
