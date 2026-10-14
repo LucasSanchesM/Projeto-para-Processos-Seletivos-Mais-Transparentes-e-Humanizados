@@ -48,7 +48,7 @@ public class AuthController {
         var token = authService.loginUser(dto);
 
         ResponseCookie cookie = ResponseCookie.from("token", token.token())
-                .httpOnly(true)
+                .httpOnly(false)
                 .path("/")
                 .maxAge(token.expiresIn() != null ? token.expiresIn() : 86400)
                 .sameSite("Lax")
