@@ -127,18 +127,25 @@ public class SecurityConfig {
         return source;
     }
 
-    @Bean
-    public BearerTokenResolver bearerTokenResolver(){
+   @Bean
+    public BearerTokenResolver bearerTokenResolver() {
         var token = new DefaultBearerTokenResolver();
         return request -> {
             if (request.getRequestURI().startsWith("/ws")) {
 
+                // 1. Tenta ler do cookie (se estiver no mesmo domínio)
                 if (request.getCookies() != null) {
                     for (Cookie cookie : request.getCookies()) {
                         if (cookie.getName().equals("token")) {
                             return cookie.getValue();
                         }
                     }
+                }
+
+                // 2. NOVO: Lê da query string (?token=...) para funcionar entre Vercel/Localhost e Render
+                String paramToken = request.getParameter("token");
+                if (paramToken != null && !paramToken.isBlank()) {
+                    return paramToken;
                 }
 
                 return null;
