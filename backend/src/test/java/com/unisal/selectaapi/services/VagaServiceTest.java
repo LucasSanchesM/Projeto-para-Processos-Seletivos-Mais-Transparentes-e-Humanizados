@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -335,8 +336,8 @@ public class VagaServiceTest {
             vaga.setCategoria(VagaRole.DESENVOLVIMENTO_SOFTWARE);
             vaga.setModalidade(ModalidadeVaga.PRESENCIAL);
             vaga.setAtiva(true);
-            vaga.setCreatedAt(LocalDateTime.now());
-            vaga.setUpdatedAt(LocalDateTime.now());
+            vaga.setCreatedAt(Instant.now());
+            vaga.setUpdatedAt(Instant.now());
         }
 
         //Aqui, como o metodo em si nao lança nenhuma excessão irei testar somente o funcionamento das chamadas de find dtc
@@ -398,8 +399,8 @@ public class VagaServiceTest {
             vaga1.setCategoria(VagaRole.DESENVOLVIMENTO_SOFTWARE);
             vaga1.setModalidade(ModalidadeVaga.PRESENCIAL);
             vaga1.setAtiva(true);
-            vaga1.setCreatedAt(LocalDateTime.now());
-            vaga1.setUpdatedAt(LocalDateTime.now());
+            vaga1.setCreatedAt(Instant.now());
+            vaga1.setUpdatedAt(Instant.now());
 
             vaga2 = new Vaga();
             vaga2.setId(UUID.randomUUID());
@@ -415,8 +416,8 @@ public class VagaServiceTest {
             vaga2.setCategoria(VagaRole.INFRAESTRUTURA_DEVOPS);
             vaga2.setModalidade(ModalidadeVaga.REMOTO);
             vaga2.setAtiva(true);
-            vaga2.setCreatedAt(LocalDateTime.now());
-            vaga2.setUpdatedAt(LocalDateTime.now());
+            vaga2.setCreatedAt(Instant.now());
+            vaga2.setUpdatedAt(Instant.now());
         }
 
         @Test
@@ -521,8 +522,8 @@ public class VagaServiceTest {
             vaga.setCategoria(VagaRole.DESENVOLVIMENTO_SOFTWARE);
             vaga.setModalidade(ModalidadeVaga.PRESENCIAL);
             vaga.setAtiva(true);
-            vaga.setCreatedAt(LocalDateTime.now());
-            vaga.setUpdatedAt(LocalDateTime.now());
+            vaga.setCreatedAt(Instant.now());
+            vaga.setUpdatedAt(Instant.now());
         }
 
         @Test
@@ -592,8 +593,8 @@ public class VagaServiceTest {
             vaga.setCategoria(VagaRole.DESENVOLVIMENTO_SOFTWARE);
             vaga.setModalidade(ModalidadeVaga.PRESENCIAL);
             vaga.setAtiva(true);
-            vaga.setCreatedAt(LocalDateTime.now());
-            vaga.setUpdatedAt(LocalDateTime.now());
+            vaga.setCreatedAt(Instant.now());
+            vaga.setUpdatedAt(Instant.now());
 
             dto = new UpdateVaga(
                     "Desenvolvedor Backend Java Sênior",
@@ -718,8 +719,8 @@ public class VagaServiceTest {
             vaga.setCategoria(VagaRole.DESENVOLVIMENTO_SOFTWARE);
             vaga.setModalidade(ModalidadeVaga.PRESENCIAL);
             vaga.setAtiva(true);
-            vaga.setCreatedAt(LocalDateTime.now());
-            vaga.setUpdatedAt(LocalDateTime.now());
+            vaga.setCreatedAt(Instant.now());
+            vaga.setUpdatedAt(Instant.now());
         }
 
         @Test

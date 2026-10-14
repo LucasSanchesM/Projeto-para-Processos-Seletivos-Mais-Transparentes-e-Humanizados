@@ -1006,7 +1006,7 @@ public class CandidateProfileServiceTest {
                                     "Tech Solutions",
                                     "Desenvolvedor Backend Junior",
                                     "Responsável pelo desenvolvimento e manutenção de APIs REST utilizando Spring Boot",
-                                    LocalDate.of(2023, 3, 1),
+                                    Instant.now(),
                                     null,
                                     true);
         }
@@ -1089,7 +1089,7 @@ public class CandidateProfileServiceTest {
             "EmpresaNova",
             "DesenvolvedorNovo",
             "Responsável pelo desenvolvimento e manutenção de APIs REST utilizando Spring Boot",
-            LocalDate.of(2023, 3, 1),
+            Instant.now(),
             null,
             true
             );
