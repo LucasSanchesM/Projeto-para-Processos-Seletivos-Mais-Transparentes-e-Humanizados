@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -63,7 +64,7 @@ public class NotificacaoService {
 
     @Transactional
     public void marcarNotificacaoComoLidaPeloId(UUID notificacaoId, UUID userId){
-        var linhasAfetadas = notificacaoRepository.marcarMensagemComoLida(notificacaoId, userId, LocalDateTime.now());
+        var linhasAfetadas = notificacaoRepository.marcarMensagemComoLida(notificacaoId, userId, Instant.now());
         if(linhasAfetadas == 0){
             throw new BusinessException(HttpStatus.NOT_FOUND, "Notificacao listada como nao lida, nao foi encontrada");
         }
@@ -72,7 +73,7 @@ public class NotificacaoService {
 
     @Transactional
     public void marcarTodasNotificacoesComoLidas(UUID userId){
-            notificacaoRepository.marcarTodasMensagensComoLidasPeloUserId(userId, LocalDateTime.now());
+            notificacaoRepository.marcarTodasMensagensComoLidasPeloUserId(userId, Instant.now());
     }
 
     @Transactional(readOnly = true)

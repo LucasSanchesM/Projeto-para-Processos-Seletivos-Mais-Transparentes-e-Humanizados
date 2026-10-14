@@ -1,5 +1,6 @@
 package com.unisal.selectaapi.candidatura.service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -133,7 +134,7 @@ public class CandidaturaService {
 
         StatusCandidatura statusAnterior = candidatura.getStatus();
         candidatura.setStatus(StatusCandidatura.CANCELADA);
-        candidatura.setFinalizadaEm(LocalDateTime.now());
+        candidatura.setFinalizadaEm(Instant.now());
         candidatura.setMotivoEncerramento("Cancelada pelo candidato");
 
         Candidatura salva = candidaturaRepository.save(candidatura);
@@ -243,7 +244,7 @@ public class CandidaturaService {
 
         candidatura.setStatus(dto.status());
         candidatura.setMotivoEncerramento(dto.motivo());
-        candidatura.setFinalizadaEm(LocalDateTime.now());
+        candidatura.setFinalizadaEm(Instant.now());
 
         if (dto.status() == StatusCandidatura.APROVADA) {
             candidatura.setEtapaAtual(EtapaProcesso.CONTRATACAO);

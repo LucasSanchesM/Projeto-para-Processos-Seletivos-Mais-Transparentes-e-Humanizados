@@ -1,5 +1,6 @@
 package com.unisal.selectaapi.services;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -147,8 +148,8 @@ public class CandidateProfileServiceTest {
         profile.getProjects().add(proj);
 
         // datas
-        profile.setCreatedAt(LocalDateTime.now());
-        profile.setUpdatedAt(LocalDateTime.now());
+        profile.setCreatedAt(Instant.now());
+        profile.setUpdatedAt(Instant.now());
     }
 
     @Nested

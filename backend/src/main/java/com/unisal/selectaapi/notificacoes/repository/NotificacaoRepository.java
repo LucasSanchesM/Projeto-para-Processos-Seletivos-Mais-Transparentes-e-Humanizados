@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -30,7 +31,7 @@ public interface NotificacaoRepository extends JpaRepository<Notificacao, UUID> 
                 """)
     int marcarMensagemComoLida(@Param("notificacao_id") UUID notificacaoId,
                                @Param("dono_da_consulta") UUID donoDaConsulta,
-                               @Param("lida_em") LocalDateTime lidaEm);
+                               @Param("lida_em") Instant lidaEm);
 
     @Modifying
     @Query("""
@@ -40,7 +41,7 @@ public interface NotificacaoRepository extends JpaRepository<Notificacao, UUID> 
                 AND n.lida = false
 
         """)
-    int marcarTodasMensagensComoLidasPeloUserId(@Param("user_id") UUID userId, @Param("date") LocalDateTime localDateTime);
+    int marcarTodasMensagensComoLidasPeloUserId(@Param("user_id") UUID userId, @Param("date") Instant localDateTime);
 
     //Query para garantir que apenas os campos corretos sejam alterados, evitando recarregar a entidade inteira a cada save
     @Query("""

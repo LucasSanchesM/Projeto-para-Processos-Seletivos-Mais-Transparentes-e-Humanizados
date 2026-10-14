@@ -4,6 +4,7 @@ import com.unisal.selectaapi.candidatura.entity.Candidatura;
 import com.unisal.selectaapi.user.entity.User;
 import jakarta.persistence.*;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -31,10 +32,10 @@ public class HistoricoMensagens {
     private Boolean lida;
 
     @Column(name = "lida_em")
-    private LocalDateTime lidaEm;
+    private Instant lidaEm;
 
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdTimeStamp;
+    private Instant createdTimeStamp;
 
     public HistoricoMensagens(UUID idMensagem, Candidatura candidatura, User user, String mensagem) {
         this.idMensagem = idMensagem;
@@ -43,7 +44,7 @@ public class HistoricoMensagens {
         this.mensagem = mensagem;
     }
 
-    public LocalDateTime getCreatedTimeStamp() {
+    public Instant getCreatedTimeStamp() {
         return createdTimeStamp;
     }
 
@@ -75,11 +76,11 @@ public class HistoricoMensagens {
         return mensagem;
     }
 
-    public LocalDateTime getLida_Em() {
+    public Instant getLida_Em() {
         return lidaEm;
     }
 
-    public void setLida_Em(LocalDateTime lida_Em) {
+    public void setLida_Em(Instant lida_Em) {
         this.lidaEm = lida_Em;
     }
 
@@ -100,7 +101,7 @@ public class HistoricoMensagens {
 
     @PrePersist
     private void onCreate(){
-        this.createdTimeStamp = LocalDateTime.now();
+        this.createdTimeStamp = Instant.now();
         this.lida = false;
         this.lidaEm = null;
     }

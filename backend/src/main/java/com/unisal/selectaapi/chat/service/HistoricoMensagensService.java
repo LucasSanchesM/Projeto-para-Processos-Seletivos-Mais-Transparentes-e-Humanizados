@@ -19,6 +19,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -112,7 +113,7 @@ public class HistoricoMensagensService {
     }
 
     @Transactional
-    public void marcarMensagensComoLidas(UUID userId, UUID candidaturaId, LocalDateTime lidaEm){
+    public void marcarMensagensComoLidas(UUID userId, UUID candidaturaId, Instant lidaEm){
             var dados = pegarEValidarCandidaturaEUser(userId, candidaturaId);
             var  atualizadas = historicoMensagensRepository.marcarComoLidas(candidaturaId, userId, lidaEm);
             if(atualizadas>0){
