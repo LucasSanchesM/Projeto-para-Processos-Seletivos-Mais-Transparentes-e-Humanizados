@@ -1,7 +1,10 @@
 package com.unisal.selectaapi.auth.controller;
 
+import java.time.Duration;
 import java.util.Map;
 
+import com.unisal.selectaapi.auth.dtos.*;
+import com.unisal.selectaapi.auth.entity.RefreshToken;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -13,11 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 
-import com.unisal.selectaapi.auth.dtos.CompanyRegistrationDto;
-import com.unisal.selectaapi.auth.dtos.LoginRequestDto;
-import com.unisal.selectaapi.auth.dtos.LoginResponseDto;
-import com.unisal.selectaapi.auth.dtos.ResendCodeDto;
-import com.unisal.selectaapi.auth.dtos.VerifyEmailDto;
 import com.unisal.selectaapi.auth.service.AuthService;
 import com.unisal.selectaapi.auth.service.CompanyRegistrationService;
 import com.unisal.selectaapi.user.dto.UserResponseDto;
@@ -47,15 +45,12 @@ public class AuthController {
     public ResponseEntity<LoginResponseDto> logarUser(@Valid @RequestBody LoginRequestDto dto) {
         var token = authService.loginUser(dto);
 
-        ResponseCookie cookie = ResponseCookie.from("token", token.token())
-                .httpOnly(false)
-                .path("/")
-                .maxAge(token.expiresIn() != null ? token.expiresIn() : 86400)
-                .sameSite("Lax")
-                .build();
+        var cookieJwt = buildJwtCookie(token);
+        var cookieRefreshToken = buildRefreshCookie(token);
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, cookieJwt.toString())
+                .header(HttpHeaders.SET_COOKIE, cookieRefreshToken.toString())
                 .body(token);
     }
 
@@ -71,6 +66,36 @@ public class AuthController {
         userService.resendVerificationCode(dto.email());
 
         return ResponseEntity.ok(Map.of("message", "Novo código de verificação enviado para o email"));
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<LoginResponseDto> getJwtWithRefreshToken(@Valid @RequestBody RefreshTokenDto dto){
+        var token = authService.refresh(dto.refreshToken());
+        var cookieJwt = buildJwtCookie(token);
+        var cookieRefreshToken = buildRefreshCookie(token);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookieJwt.toString())
+                .header(HttpHeaders.SET_COOKIE, cookieRefreshToken.toString())
+                .body(token);
+    }
+
+    private ResponseCookie buildJwtCookie(LoginResponseDto token){
+         return ResponseCookie.from("token", token.tokenJwt())
+                .httpOnly(false)
+                .path("/")
+                .maxAge(token.expiresInJwt() != null ? token.expiresInJwt() : 86400)
+                .sameSite("Lax")
+                .build();
+    }
+
+    private ResponseCookie buildRefreshCookie(LoginResponseDto token){
+        return ResponseCookie.from("refresh_token", token.refreshToken()    )
+                .httpOnly(false)
+                .path("/")
+                .maxAge(Duration.ofDays(7))
+                .sameSite("Lax")
+                .build();
     }
 
 }

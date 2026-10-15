@@ -18,8 +18,8 @@ public class RefreshToken {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "token_hash", nullable = false, unique = true)
-    private String tokenHash;
+    @Column(name = "refresh_oken", nullable = false, unique = true)
+    private String refreshToken;
 
     @Column(name = "revogado", nullable = false)
     private boolean revogado = false;
@@ -33,9 +33,9 @@ public class RefreshToken {
     public RefreshToken() {
     }
 
-    public RefreshToken(User user, String tokenHash, Instant expiryDate) {
+    public RefreshToken(User user, String refreshToken, Instant expiryDate) {
         this.user = user;
-        this.tokenHash = tokenHash;
+        this.refreshToken = refreshToken;
         this.expiryDate = expiryDate;
     }
 
@@ -60,12 +60,12 @@ public class RefreshToken {
         this.user = user;
     }
 
-    public String getTokenHash() {
-        return tokenHash;
+    public String getRefreshToken() {
+        return refreshToken;
     }
 
-    public void setTokenHash(String tokenHash) {
-        this.tokenHash = tokenHash;
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
     }
 
     public boolean isRevogado() {

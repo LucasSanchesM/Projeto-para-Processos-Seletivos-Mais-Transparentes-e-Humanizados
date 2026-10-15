@@ -1,6 +1,7 @@
 package com.unisal.selectaapi.auth.oauth;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -58,15 +59,23 @@ public class OAuthSuccessHandler implements AuthenticationSuccessHandler {
 
             var user = providerService.authenticateCandidate(oidcUser);
             var token = authService.issueToken(user);
-            ResponseCookie cookie = ResponseCookie.from("token", token.token())
+            ResponseCookie cookieJwt = ResponseCookie.from("token", token.tokenJwt())
                     .httpOnly(false)
                     .path("/")
-                    .maxAge(token.expiresIn())
+                    .maxAge(token.expiresInJwt())
+                    .sameSite("Lax")
+                    .build();
+            ResponseCookie cookieRefresh = ResponseCookie.from("refresh_token", token.refreshToken())
+                    .httpOnly(false)
+                    .path("/")
+                    .maxAge(Duration.ofDays(7))
                     .sameSite("Lax")
                     .build();
 
-            response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-            
+            response.addHeader(HttpHeaders.SET_COOKIE, cookieJwt.toString());
+            response.addHeader(HttpHeaders.SET_COOKIE, cookieRefresh.toString());
+
+
             invalidateSession(request);
             response.sendRedirect(frontendUrl + "/dashboard");
         } catch (BusinessException exception) {
