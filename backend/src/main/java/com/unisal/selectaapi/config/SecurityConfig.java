@@ -63,6 +63,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/register-company").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/verify-email").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/resend-code").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/refresh-token").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/vagas/**").permitAll()
                         .anyRequest()

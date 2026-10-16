@@ -1,6 +1,7 @@
 package com.unisal.selectaapi.user;
 
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -85,7 +86,7 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT,
                         "Nenhum código de verificação pendente"));
 
-        if (verificationCode.getExpiresAt().isBefore(LocalDateTime.now())) {
+        if (verificationCode.getExpiresAt().isBefore(Instant.now())) {
             throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT,
                     "Código de verificação expirado. Solicite um novo código.");
         }

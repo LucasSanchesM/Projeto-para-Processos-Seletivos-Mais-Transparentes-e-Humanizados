@@ -5,6 +5,7 @@
     import com.unisal.selectaapi.user.entity.User;
     import jakarta.persistence.*;
 
+    import java.time.Instant;
     import java.time.LocalDateTime;
     import java.util.UUID;
 
@@ -37,10 +38,10 @@
         private boolean lida = false;
 
         @Column(name = "lida_em")
-        private LocalDateTime lidaEm;
+        private Instant lidaEm;
 
         @Column(nullable = false, updatable = false)
-        private LocalDateTime createdAt;
+        private Instant createdAt;
 
         public Notificacao() {
         }
@@ -61,7 +62,7 @@
             this.recursoId = recursoId;
         }
 
-        public LocalDateTime getCreatedAt() {
+        public Instant getCreatedAt() {
             return createdAt;
         }
 
@@ -83,14 +84,14 @@
 
         @PrePersist
         private void onCreate(){
-            this.createdAt = LocalDateTime.now();
+            this.createdAt = Instant.now();
         }
 
-        public LocalDateTime getLidaEm() {
+        public Instant getLidaEm() {
             return lidaEm;
         }
 
-        public void setLidaEm(LocalDateTime lidaEm) {
+        public void setLidaEm(Instant    lidaEm) {
             this.lidaEm = lidaEm;
         }
 

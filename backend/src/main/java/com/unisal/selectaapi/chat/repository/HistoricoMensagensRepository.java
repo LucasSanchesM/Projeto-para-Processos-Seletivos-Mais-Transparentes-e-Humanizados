@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -25,7 +26,7 @@ public interface HistoricoMensagensRepository extends JpaRepository<HistoricoMen
     """)
     int marcarComoLidas(@Param("candidaturaId") UUID candidaturaId,
                         @Param("userId") UUID userId,
-                        @Param("agora") LocalDateTime agora);
+                        @Param("agora") Instant agora);
 
     @Query("""
         SELECT COUNT(*) FROM HistoricoMensagens m

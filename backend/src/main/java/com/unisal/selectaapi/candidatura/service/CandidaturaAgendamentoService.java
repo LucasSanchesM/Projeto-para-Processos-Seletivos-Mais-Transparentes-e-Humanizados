@@ -1,6 +1,7 @@
 package com.unisal.selectaapi.candidatura.service;
 
 import java.net.URI;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -167,7 +168,7 @@ public class CandidaturaAgendamentoService {
         } catch (IllegalArgumentException exception) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "O link deve ser uma URL http ou https válida");
         }
-        if (dto.inicio().isBefore(LocalDateTime.now())) {
+        if (dto.inicio().isBefore(Instant.now())) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "O agendamento deve ser futuro");
         }
     }

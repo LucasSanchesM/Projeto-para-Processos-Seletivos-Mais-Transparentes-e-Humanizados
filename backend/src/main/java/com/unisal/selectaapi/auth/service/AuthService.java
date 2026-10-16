@@ -15,17 +15,20 @@ import com.unisal.selectaapi.auth.dtos.LoginRequestDto;
 import com.unisal.selectaapi.auth.dtos.LoginResponseDto;
 import com.unisal.selectaapi.user.UserRepository;
 import com.unisal.selectaapi.user.entity.User;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtEncoder jwtEncoder;
+    private final RefreshTokenService refreshTokenService;
 
-    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtEncoder jwtEncoder) {
+    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtEncoder jwtEncoder, RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;
+        this.refreshTokenService = refreshTokenService;
     }
 
     public LoginResponseDto loginUser(LoginRequestDto dto) {
@@ -49,7 +52,7 @@ public class AuthService {
 
     public LoginResponseDto issueToken(User user) {
         var now = Instant.now();
-        var expiresIn = 9000L;
+        var expiresIn = 900L;
         var scope = user.getRole();
 
         var claims = JwtClaimsSet.builder()
@@ -62,8 +65,35 @@ public class AuthService {
 
         var jwtValue = jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
 
-        var response = new LoginResponseDto(jwtValue, expiresIn, user.getRole());
+        var refreshToken = refreshTokenService.createRefreshToken(user).getRefreshToken();
+
+        var response = new LoginResponseDto(jwtValue, expiresIn, refreshToken, user.getRole());
 
         return response;
+    }
+
+    @Transactional(noRollbackFor = BusinessException.class)
+    public LoginResponseDto refresh(String refreshToken) {
+        var novoRefresh = refreshTokenService.rotateRefreshToken(refreshToken);
+        var user = novoRefresh.getUser();
+
+        if (!user.getActive()) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "Conta inativa");
+        }
+
+        var now = Instant.now();
+        var expiresIn = 900L;
+
+        var claims = JwtClaimsSet.builder()
+                .issuer("backend_selecta")
+                .subject(user.getId().toString())
+                .issuedAt(now)
+                .claim("scope", user.getRole())
+                .expiresAt(now.plusSeconds(expiresIn))
+                .build();
+
+        var jwtValue = jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
+
+        return new LoginResponseDto(jwtValue, expiresIn, novoRefresh.getRefreshToken(), user.getRole());
     }
 }
