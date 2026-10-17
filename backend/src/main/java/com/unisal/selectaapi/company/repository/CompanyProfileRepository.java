@@ -13,4 +13,6 @@ public interface CompanyProfileRepository extends JpaRepository<CompanyProfile, 
     Optional<CompanyProfile> findByUserId(UUID userId);
 
     boolean existsByCnpj(String cnpj);
+
+    boolean existsByUserId(UUID userId);
 }
